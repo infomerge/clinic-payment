@@ -1,0 +1,52 @@
+# 各ディレクトリ共通の除外設定
+
+# dx フォルダの設定
+dx/_vendor/
+dx/downloadpdf/
+dx/libs/*
+!dx/libs/templates/
+dx/mpdf-development/
+dx/pdf/mpdf/
+dx/pdf/mpdf-test/
+dx/pdf/tcpdf-set/
+dx/PHPMailer/
+dx/vendor/
+
+# dxdev フォルダの設定
+dxdev/_vendor/
+dxdev/downloadpdf/
+dxdev/libs/*
+!dxdev/libs/templates/
+dxdev/mpdf-development/
+dxdev/pdf/mpdf/
+dxdev/pdf/mpdf-test/
+dxdev/pdf/tcpdf-set/
+dxdev/PHPMailer/
+dxdev/vendor/
+
+# im フォルダの設定
+im/_vendor/
+im/downloadpdf/
+im/libs/*
+!im/libs/templates/
+im/mpdf-development/
+im/pdf/mpdf/
+im/pdf/mpdf-test/
+im/pdf/tcpdf-set/
+im/PHPMailer/
+im/vendor/
+
+# imdev フォルダの設定
+imdev/_vendor/
+imdev/downloadpdf/
+imdev/libs/*
+!imdev/libs/templates/
+imdev/mpdf-development/
+imdev/pdf/mpdf/
+imdev/pdf/mpdf-test/
+imdev/pdf/tcpdf-set/
+imdev/PHPMailer/
+imdev/vendor/
+
+# その他、OSが生成する不要ファイル
+.DS_Store
