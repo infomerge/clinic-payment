@@ -1,5 +1,5 @@
 <?php
-ini_set( 'display_errors', 0 );
+ini_set( 'display_errors', 1 );
 ini_set("memory_limit", "5120M");
 set_time_limit(0);
 
@@ -239,6 +239,67 @@ class CLSYSTEM{
 
             ##########
             #
+            # 医療保険と介護保険のoriginal_pidを統合してユニークなリストを作成
+            #
+            ##########
+            $all_original_pids = array();
+            # 医療保険のoriginal_pidを取得
+            foreach($iryo_data as $v){
+                $all_original_pids[$v['original_pid']] = true;
+            }
+            # 介護保険のoriginal_pidを取得
+            foreach($kaigo_trans as $original_pid => $v){
+                $all_original_pids[$original_pid] = true;
+            }
+            $all_original_pids = array_keys($all_original_pids);
+
+            ##########
+            #
+            # 医療保険がない患者のためにpatient_infoとaccount_infoを取得
+            #
+            ##########
+            $patient_info_map = array();
+            $account_info_map = array();
+            foreach($all_original_pids as $original_pid){
+                $found_in_iryo = false;
+                foreach($iryo_data as $v){
+                    if($v['original_pid'] == $original_pid){
+                        $found_in_iryo = true;
+                        break;
+                    }
+                }
+                # 医療保険がない患者の場合、patient_infoとaccount_infoを取得
+                if(!$found_in_iryo){
+                    # patient_infoを取得
+                    $sql = "SELECT patient_info.*, rek_patient.jigyosya 
+                            FROM patient_info 
+                            INNER JOIN rek_patient ON patient_info.original_pid = rek_patient.original_pid 
+                            WHERE patient_info.original_pid = '{$original_pid}' AND patient_info.disp = 0";
+                    if($this->format == "seikyu"){
+                        $sql .= " AND patient_info.invoice_output = 0 ";
+                    }else if($this->format == "ryosyu"){
+                        $sql .= " AND patient_info.receipt_output = 0 ";
+                    }
+                    $stmt = $this->db->databasequery($sql);
+                    $patient_info_result = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if($patient_info_result){
+                        $patient_info_map[$original_pid] = $patient_info_result;
+                        # account_infoを取得（jigyosyaをoriginal_irkkcodeとして使用）
+                        if(isset($patient_info_result['jigyosya']) && $patient_info_result['jigyosya']){
+                            $jigyosya = $patient_info_result['jigyosya'];
+                            $sql = "SELECT * FROM account_info WHERE original_irkkcode = '{$jigyosya}'";
+                            $stmt = $this->db->databasequery($sql);
+                            $account_info_result = $stmt->fetch(PDO::FETCH_ASSOC);
+                            if($account_info_result){
+                                $account_info_map[$original_pid] = $account_info_result;
+                            }
+                        }
+                    }
+                }
+            }
+
+            ##########
+            #
             # targetymに該当する、医療保険データの保険カテゴリーごとの点数と、診療日ごとの負担額と、その他データを$dataに格納
             #
             ##########
@@ -348,6 +409,33 @@ class CLSYSTEM{
             }
             #print_r($data[95]);exit;
 
+            ##########
+            #
+            # 医療保険がない患者のデータを初期化
+            #
+            ##########
+            foreach($all_original_pids as $original_pid){
+                if(!isset($data[$original_pid])){
+                    $data[$original_pid] = array();
+                    # patient_infoとaccount_infoが取得できている場合、$data[$original_pid]['data']に格納
+                    if(isset($patient_info_map[$original_pid])){
+                        $data[$original_pid]['data'] = $patient_info_map[$original_pid];
+                        if(isset($account_info_map[$original_pid])){
+                            # account_infoのデータもマージ
+                            $data[$original_pid]['data'] = array_merge($data[$original_pid]['data'], $account_info_map[$original_pid]);
+                        }
+                        # rek_patientの情報も必要に応じて追加（介護保険データから取得）
+                        foreach($kaigo_data as $kaigo_v){
+                            if($kaigo_v['original_pid'] == $original_pid){
+                                if(isset($kaigo_v['jigyosya'])){
+                                    $data[$original_pid]['data']['irkkcode'] = $kaigo_v['jigyosya'];
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
 
             ##########
             #
@@ -819,7 +907,7 @@ class CLSYSTEM{
 
             #請求番号
             $srm = isset($srm) ? $srm : "";     #im用に追加
-            $inv_id = $patient_data['data']['irkkcode'] . "-" . $srm . "-" . sprintf('%07d', strval($original_pid));
+            $inv_id = (isset($patient_data['data']['irkkcode']) ? $patient_data['data']['irkkcode'] : '') . "-" . $srm . "-" . sprintf('%07d', strval($original_pid));
 
             ### ---------- 封筒窓 ---------- ###
 
@@ -832,13 +920,20 @@ class CLSYSTEM{
             }
 
             #顧客情報
-            $tmp_pref = isset($m_prefecture[$patient_data['data']['prefecture']]) ? $m_prefecture[$patient_data['data']['prefecture']] : "";    #im用
-            $html .= "<p class=\"patient-address\">〒".$patient_data['data']['postal_code']."-".$patient_data['data']['postal_code2']."<br>".$tmp_pref."<br>".$patient_data['data']['address1']."<br>".$patient_data['data']['address2']."</p>";
+            $tmp_pref = isset($patient_data['data']['prefecture']) && isset($m_prefecture[$patient_data['data']['prefecture']]) ? $m_prefecture[$patient_data['data']['prefecture']] : "";    #im用
+            $postal_code = isset($patient_data['data']['postal_code']) ? $patient_data['data']['postal_code'] : '';
+            $postal_code2 = isset($patient_data['data']['postal_code2']) ? $patient_data['data']['postal_code2'] : '';
+            $address1 = isset($patient_data['data']['address1']) ? $patient_data['data']['address1'] : '';
+            $address2 = isset($patient_data['data']['address2']) ? $patient_data['data']['address2'] : '';
+            $html .= "<p class=\"patient-address\">〒".$postal_code."-".$postal_code2."<br>".$tmp_pref."<br>".$address1."<br>".$address2."</p>";
 
-            if($patient_data['data']['shipto_name']){
-                $html .= "<p class=\"patient-name\">".$patient_data['data']['shipto_name']." 様<br><span class=\"patient-name-sub\">（".$patient_data['data']['name']." 様分）</span></p>";
+            if(isset($patient_data['data']['shipto_name']) && $patient_data['data']['shipto_name']){
+                $shipto_name = isset($patient_data['data']['shipto_name']) ? $patient_data['data']['shipto_name'] : '';
+                $name = isset($patient_data['data']['name']) ? $patient_data['data']['name'] : '';
+                $html .= "<p class=\"patient-name\">".$shipto_name." 様<br><span class=\"patient-name-sub\">（".$name." 様分）</span></p>";
             } else {
-                $html .= "<p class=\"patient-name\">".$patient_data['data']['name']." 様</p>";
+                $name = isset($patient_data['data']['name']) ? $patient_data['data']['name'] : '';
+                $html .= "<p class=\"patient-name\">".$name." 様</p>";
             }
 
             $html .= "<p class=\"patient-id\"><span>No.$inv_id</span></p>";
@@ -855,11 +950,22 @@ class CLSYSTEM{
 
             ## 封筒表紙（右窓）##
             $html .= "<p class=\"header-right\">医療機関名 <span class=\"header-right-sub\">※お問い合わせはこちらへ</span></p>";
-            $html .= "<p class=\"irkk-name\">".$patient_data['data']['irkkname']."</p>";
-            $html .= "<p class=\"irkk-address\">〒".$patient_data['data']['irkk_postal_code']."<br>".$patient_data['data']['irkk_prefecture']."<br>".$patient_data['data']['irkk_address1']."<br>".$patient_data['data']['irkk_address2']."<br>".$patient_data['data']['irkk_tel']."</p><br>";
+            $irkkname = isset($patient_data['data']['irkkname']) ? $patient_data['data']['irkkname'] : '';
+            $html .= "<p class=\"irkk-name\">".$irkkname."</p>";
+            $irkk_postal_code = isset($patient_data['data']['irkk_postal_code']) ? $patient_data['data']['irkk_postal_code'] : '';
+            $irkk_prefecture = isset($patient_data['data']['irkk_prefecture']) ? $patient_data['data']['irkk_prefecture'] : '';
+            $irkk_address1 = isset($patient_data['data']['irkk_address1']) ? $patient_data['data']['irkk_address1'] : '';
+            $irkk_address2 = isset($patient_data['data']['irkk_address2']) ? $patient_data['data']['irkk_address2'] : '';
+            $irkk_tel = isset($patient_data['data']['irkk_tel']) ? $patient_data['data']['irkk_tel'] : '';
+            $html .= "<p class=\"irkk-address\">〒".$irkk_postal_code."<br>".$irkk_prefecture."<br>".$irkk_address1."<br>".$irkk_address2."<br>".$irkk_tel."</p><br>";
 
             if($this->format == "seikyu"){
-                $html .= "<p class=\"irkk-account\">".$patient_data['data']['irkk_bank_name']." ".$patient_data['data']['irkk_bank_branch']." ".$m_bank_classification[$patient_data['data']['irkk_bank_clasification']]." ".$patient_data['data']['irkk_bank_no']."</p><p class=\"irkk-account2\">（口座振替ご利用の方は、振り込みは不要です）</p>";
+                $irkk_bank_name = isset($patient_data['data']['irkk_bank_name']) ? $patient_data['data']['irkk_bank_name'] : '';
+                $irkk_bank_branch = isset($patient_data['data']['irkk_bank_branch']) ? $patient_data['data']['irkk_bank_branch'] : '';
+                $irkk_bank_clasification = isset($patient_data['data']['irkk_bank_clasification']) && $patient_data['data']['irkk_bank_clasification'] != '' ? $patient_data['data']['irkk_bank_clasification'] : '';
+                $irkk_bank_clasification_text = ($irkk_bank_clasification != '' && isset($m_bank_classification[$irkk_bank_clasification])) ? $m_bank_classification[$irkk_bank_clasification] : '';
+                $irkk_bank_no = isset($patient_data['data']['irkk_bank_no']) ? $patient_data['data']['irkk_bank_no'] : '';
+                $html .= "<p class=\"irkk-account\">".$irkk_bank_name." ".$irkk_bank_branch." ".$irkk_bank_clasification_text." ".$irkk_bank_no."</p><p class=\"irkk-account2\">（口座振替ご利用の方は、振り込みは不要です）</p>";
             }
 
 
@@ -876,10 +982,11 @@ class CLSYSTEM{
             endif;
             
             $html .= "<p id=\"shinryo-month\">".$seikyu_month."請求分<br><span id=\"shinryo-month2\">（".$shinryo_month."までの診療分）</span></p>";
+            $total_copayment = isset($patient_data['total_copayment']) ? $patient_data['total_copayment'] : 0;
             if($this->format == "seikyu"){
-                $html .= "<p id=\"total-copayment\">ご請求額　".number_format($patient_data['total_copayment'])." 円</p>";
+                $html .= "<p id=\"total-copayment\">ご請求額　".number_format($total_copayment)." 円</p>";
             } else if($this->format == "ryosyu"){
-                $html .= "<p id=\"total-copayment\">領収額　".number_format($patient_data['total_copayment'])." 円</p>";
+                $html .= "<p id=\"total-copayment\">領収額　".number_format($total_copayment)." 円</p>";
                 #$html .= "<p id=\"ryosyu-date\">領収日<br>2019/07/07</p>";
                 #領収日自由記入追加21-12-04
                 if($this->ryosyu_date !== ""){
@@ -933,9 +1040,9 @@ class CLSYSTEM{
                     <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['M']) ? $patient_data['category']['M'] : 0)."点</td>
                     <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['N']) ? $patient_data['category']['N'] : 0)."点</td>
                     <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['O']) ? $patient_data['category']['O'] : 0)."点</td>
-                    <td class=\"tensu-row border-border-bottom\">".number_format($patient_data['total_tensu'])."点</td>
+                    <td class=\"tensu-row border-border-bottom\">".number_format(isset($patient_data['total_tensu']) ? $patient_data['total_tensu'] : 0)."点</td>
                     <td class=\"tensu-row border-border-bottom\">".number_format(isset($patient_data['srm']['total_service_unit']) ? $patient_data['srm']['total_service_unit'] : 0)."単位</td>
-                    <td class=\"tensu-row border-border-bottom\">".number_format($patient_data['ichibufutankin'])."円</td></tr>";
+                    <td class=\"tensu-row border-border-bottom\">".number_format(isset($patient_data['ichibufutankin']) ? $patient_data['ichibufutankin'] : 0)."円</td></tr>";
             $html .= "</table><br/>\n";
 
             #保険外負担
@@ -969,7 +1076,8 @@ class CLSYSTEM{
             $html .= "<tr><th class=\"color333 border_rb\">前回未収金</th>
                         <th class=\"color333 border_rb\">前回過剰金</th>
                         <th class=\"color333 border_rb\">今回ご請求額</th></tr>";
-            $html .= "<tr><td class='border_r'>0円</td><td class='border_r'>0円</td><td class='border_r'>".number_format($patient_data['total_copayment'])."円</td></tr>";
+            $total_copayment_value = isset($patient_data['total_copayment']) ? $patient_data['total_copayment'] : 0;
+            $html .= "<tr><td class='border_r'>0円</td><td class='border_r'>0円</td><td class='border_r'>".number_format($total_copayment_value)."円</td></tr>";
             $html .= "<tr><td class='border_rb'>&nbsp;</td><td class='border_rb'>&nbsp;</td><td class='border_rb'>&nbsp;</td></tr>";
             $html .= "</table></div>";
 
