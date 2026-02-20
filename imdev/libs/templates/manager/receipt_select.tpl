@@ -60,6 +60,26 @@
 </div>
     </form>
 
+
+{if isset($smarty.get.testview)}
+<br><br>
+<h2 class="title_name">【ロボペイの結果をロボペイフォーマットCSVファイルから取り込み処理】</h2>
+
+<form method="post" action="csv-upload.php" enctype="multipart/form-data">
+
+<div align="center">
+    <br />
+
+    <input type="file" name="upfile" size="30" />
+
+    <br /><br />
+
+    <input type="submit" value="アップロード" />
+</div>
+
+</form>
+{/if}
+
     </div><!-- content -->
 
 

@@ -52,6 +52,39 @@ $smarty->display( 'common/header.tpl' );
 
 <?php session_start();
 
+/**
+ * レセプト特記事項から負担割合を決定する
+ *
+ * @param string $tokujikou     レセプト特記事項（例: "41", "4041", "014143"）
+ * @param int    $defaultRatio  種別マスタ等から取得したデフォルト割合
+ * @return int
+ */
+function getRatioByTokujikou(string $tokujikou, int $defaultRatio): int
+{
+    // 将来拡張用：特記事項コード → 強制割合
+    $forceRatioMap = [
+        '41' => 20,
+        '43' => 20,
+        // '45' => 30,
+        // '99' => 0,
+    ];
+
+    if ($tokujikou === '') {
+        return $defaultRatio;
+    }
+
+    // 2桁ずつ分割
+    $codes = str_split($tokujikou, 2);
+
+    foreach ($codes as $code) {
+        if (isset($forceRatioMap[$code])) {
+            return $forceRatioMap[$code];
+        }
+    }
+
+    return $defaultRatio;
+}
+
 //DB Connect
 $dbh = new PDO('mysql:dbname='.DBNAME.';host=localhost;charset=utf8','xs547384_dx','wwxlkl7m');
 $dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -80,7 +113,7 @@ $i = 1;
 
 <?php
 $sid = 0;
-
+$ko_flag = false;
 while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
     $array_ss = $array_co = array();
 
@@ -136,7 +169,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
 
     }
     if ($data[0] == "RE") {
-
+        $ko_flag = false;
         //名前の文字化け回避して$nameに格納
         $name = mb_convert_encoding("{$data[4]}", "UTF-8", "SJIS");
         //診療年月(GYYMM)を西暦に変換して診療月($srm)に格納
@@ -357,6 +390,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
 
     }
     if ($data[0] == "KO") {
+        $ko_flag = true;
 
         $koid = $data[1];
 
@@ -582,7 +616,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
         $sql = "SELECT * FROM syubetsu_code WHERE code = $syubetsu";
         $stmt = $dbh->query($sql);
         $syubetsu_copy = $stmt->fetchALL(PDO::FETCH_ASSOC);
-        switch($array_re['レセプト特記事項']){
+        /*switch($array_re['レセプト特記事項']){
             case "41":
             case "43":
             case "4041":
@@ -591,7 +625,15 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
             default:
                 $ratio = isset($syubetsu_copy[0]['ratio']) ? intval($syubetsu_copy[0]['ratio']) : 0;
                 break;
-        }
+        }*/
+        $defaultRatio = isset($syubetsu_copy[0]['ratio'])
+            ? intval($syubetsu_copy[0]['ratio'])
+            : 0;
+
+        $ratio = getRatioByTokujikou(
+            $array_re['レセプト特記事項'] ?? '',
+            $defaultRatio
+        );
         
         $upper = $syubetsu_copy[0]['upper'];
 
@@ -676,6 +718,10 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
 
 
                 //SESSIONに診療行為データを格納
+                if($ko_flag){
+                    $ratio = 0;
+                    $copayment = 0;
+                }
                 $shinryo_array = array($rid,$sid,$original_irkkcode,$original_pid,$pid,$name,$srd,$sbt,$srk,$category,$shinryo_name,$tns,$kaisu,$ftn,$syubetsu,$ratio,$copayment);
                 $_SESSION["shinryo_".$rid][$sid] = $shinryo_array;
 
@@ -689,7 +735,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
         $stmt = $dbh->query($sql);
         $syubetsu_copy = $stmt->fetchALL(PDO::FETCH_ASSOC);
         #$ratio = $syubetsu_copy[0]['ratio'];
-        switch($array_re['レセプト特記事項']){
+        /*switch($array_re['レセプト特記事項']){
             case "41":
             case "43":
             case "4041":
@@ -698,7 +744,15 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
             default:
                 $ratio = isset($syubetsu_copy[0]['ratio']) ? intval($syubetsu_copy[0]['ratio']) : 0;
                 break;
-        }
+        }*/
+        $defaultRatio = isset($syubetsu_copy[0]['ratio'])
+            ? intval($syubetsu_copy[0]['ratio'])
+            : 0;
+
+        $ratio = getRatioByTokujikou(
+            $array_re['レセプト特記事項'] ?? '',
+            $defaultRatio
+        );
         $upper = $syubetsu_copy[0]['upper'];
 
         for ($j = 7 ; $j <= 37; $j++) {
@@ -780,6 +834,10 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
 
 
                 //SESSIONに診療行為データを格納
+                if($ko_flag){
+                    $ratio = 0;
+                    $copayment = 0;
+                }
                 $shinryo_array = array($rid,$sid,$original_irkkcode,$original_pid,$pid,$name,$srd,$sbt,$srk,$category,$shinryo_name,$tns,$kaisu,$ftn,$syubetsu,$ratio,$copayment);
                 $_SESSION["shinryo_".$rid][$sid] = $shinryo_array;
 
@@ -793,7 +851,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
         $stmt = $dbh->query($sql);
         $syubetsu_copy = $stmt->fetchALL(PDO::FETCH_ASSOC);
         #$ratio = $syubetsu_copy[0]['ratio'];
-        switch($array_re['レセプト特記事項']){
+        /*switch($array_re['レセプト特記事項']){
             case "41":
             case "43":
             case "4041":
@@ -802,7 +860,15 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
             default:
                 $ratio = isset($syubetsu_copy[0]['ratio']) ? intval($syubetsu_copy[0]['ratio']) : 0;
                 break;
-        }
+        }*/
+        $defaultRatio = isset($syubetsu_copy[0]['ratio'])
+            ? intval($syubetsu_copy[0]['ratio'])
+            : 0;
+
+        $ratio = getRatioByTokujikou(
+            $array_re['レセプト特記事項'] ?? '',
+            $defaultRatio
+        );
         $upper = $syubetsu_copy[0]['upper'];
 
         for ($j = 8 ; $j <= 38; $j++) {
@@ -885,6 +951,10 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
 
 
                 //SESSIONに診療行為データを格納
+                if($ko_flag){
+                    $ratio = 0;
+                    $copayment = 0;
+                }
                 $shinryo_array = array($rid,$sid,$original_irkkcode,$original_pid,$pid,$name,$srd,$sbt,$srk,$category,$shinryo_name,$tns,$kaisu,$ftn,$syubetsu,$ratio,$copayment);
                 $_SESSION["shinryo_".$rid][$sid] = $shinryo_array;
 
@@ -898,7 +968,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
         $stmt = $dbh->query($sql);
         $syubetsu_copy = $stmt->fetchALL(PDO::FETCH_ASSOC);
         #$ratio = $syubetsu_copy[0]['ratio'];
-        switch($array_re['レセプト特記事項']){
+        /*switch($array_re['レセプト特記事項']){
             case "41":
             case "43":
             case "4041":
@@ -907,7 +977,15 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
             default:
                 $ratio = $syubetsu_copy[0]['ratio'];
                 break;
-        }
+        }*/
+        $defaultRatio = isset($syubetsu_copy[0]['ratio'])
+            ? intval($syubetsu_copy[0]['ratio'])
+            : 0;
+
+        $ratio = getRatioByTokujikou(
+            $array_re['レセプト特記事項'] ?? '',
+            $defaultRatio
+        );
         $upper = $syubetsu_copy[0]['upper'];
 
         for ($j = 14 ; $j <= 44; $j++) {
@@ -989,6 +1067,10 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
 
 
                 //SESSIONに診療行為データを格納
+                if($ko_flag){
+                    $ratio = 0;
+                    $copayment = 0;
+                }
                 $shinryo_array = array($rid,$sid,$original_irkkcode,$original_pid,$pid,$name,$srd,$sbt,$srk,$category,$shinryo_name,$tns,$kaisu,$ftn,$syubetsu,$ratio,$copayment);
                 $_SESSION["shinryo_".$rid][$sid] = $shinryo_array;
 

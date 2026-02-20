@@ -239,6 +239,67 @@ class CLSYSTEM{
 
             ##########
             #
+            # 医療保険と介護保険のoriginal_pidを統合してユニークなリストを作成
+            #
+            ##########
+            $all_original_pids = array();
+            # 医療保険のoriginal_pidを取得
+            foreach($iryo_data as $v){
+                $all_original_pids[$v['original_pid']] = true;
+            }
+            # 介護保険のoriginal_pidを取得
+            foreach($kaigo_trans as $original_pid => $v){
+                $all_original_pids[$original_pid] = true;
+            }
+            $all_original_pids = array_keys($all_original_pids);
+
+            ##########
+            #
+            # 医療保険がない患者のためにpatient_infoとaccount_infoを取得
+            #
+            ##########
+            $patient_info_map = array();
+            $account_info_map = array();
+            foreach($all_original_pids as $original_pid){
+                $found_in_iryo = false;
+                foreach($iryo_data as $v){
+                    if($v['original_pid'] == $original_pid){
+                        $found_in_iryo = true;
+                        break;
+                    }
+                }
+                # 医療保険がない患者の場合、patient_infoとaccount_infoを取得
+                if(!$found_in_iryo){
+                    # patient_infoを取得
+                    $sql = "SELECT patient_info.*, rek_patient.jigyosya 
+                            FROM patient_info 
+                            INNER JOIN rek_patient ON patient_info.original_pid = rek_patient.original_pid 
+                            WHERE patient_info.original_pid = '{$original_pid}' AND patient_info.disp = 0";
+                    if($this->format == "seikyu"){
+                        $sql .= " AND patient_info.invoice_output = 0 ";
+                    }else if($this->format == "ryosyu"){
+                        $sql .= " AND patient_info.receipt_output = 0 ";
+                    }
+                    $stmt = $this->db->databasequery($sql);
+                    $patient_info_result = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if($patient_info_result){
+                        $patient_info_map[$original_pid] = $patient_info_result;
+                        # account_infoを取得（jigyosyaをoriginal_irkkcodeとして使用）
+                        if(isset($patient_info_result['jigyosya']) && $patient_info_result['jigyosya']){
+                            $jigyosya = $patient_info_result['jigyosya'];
+                            $sql = "SELECT * FROM account_info WHERE original_irkkcode = '{$jigyosya}'";
+                            $stmt = $this->db->databasequery($sql);
+                            $account_info_result = $stmt->fetch(PDO::FETCH_ASSOC);
+                            if($account_info_result){
+                                $account_info_map[$original_pid] = $account_info_result;
+                            }
+                        }
+                    }
+                }
+            }
+
+            ##########
+            #
             # targetymに該当する、医療保険データの保険カテゴリーごとの点数と、診療日ごとの負担額と、その他データを$dataに格納
             #
             ##########
@@ -294,13 +355,18 @@ class CLSYSTEM{
                     #echo "m_category<br>\n";
                     #if(array_key_exists($k , $v['category'])){
                     if($k == $v['category']){
-                    #Yは「F：投薬」に合算
+                    #Yは「F：画像診断」に合算 → 251230 Yは「G：投薬」に合算
                     if($k == 'Y'){
                         #$m_category['F']['tensu'] += $value['tensu'];
-                        if(isset($data[$v['original_pid']]['category']['F'])){
+                        /*if(isset($data[$v['original_pid']]['category']['F'])){
                             $data[$v['original_pid']]['category']['F'] += intval($v['tensu']) * intval($v['kaisu']);
                         }else{
                             $data[$v['original_pid']]['category']['F'] = intval($v['tensu']) * intval($v['kaisu']);
+                        }*/
+                        if(isset($data[$v['original_pid']]['category']['G'])){
+                            $data[$v['original_pid']]['category']['G'] += intval($v['tensu']) * intval($v['kaisu']);
+                        }else{
+                            $data[$v['original_pid']]['category']['G'] = intval($v['tensu']) * intval($v['kaisu']);
                         }
 
                     }elseif($k == 'P' ||
@@ -343,6 +409,33 @@ class CLSYSTEM{
             }
             #print_r($data[95]);exit;
 
+            ##########
+            #
+            # 医療保険がない患者のデータを初期化
+            #
+            ##########
+            foreach($all_original_pids as $original_pid){
+                if(!isset($data[$original_pid])){
+                    $data[$original_pid] = array();
+                    # patient_infoとaccount_infoが取得できている場合、$data[$original_pid]['data']に格納
+                    if(isset($patient_info_map[$original_pid])){
+                        $data[$original_pid]['data'] = $patient_info_map[$original_pid];
+                        if(isset($account_info_map[$original_pid])){
+                            # account_infoのデータもマージ
+                            $data[$original_pid]['data'] = array_merge($data[$original_pid]['data'], $account_info_map[$original_pid]);
+                        }
+                        # rek_patientの情報も必要に応じて追加（介護保険データから取得）
+                        foreach($kaigo_data as $kaigo_v){
+                            if($kaigo_v['original_pid'] == $original_pid){
+                                if(isset($kaigo_v['jigyosya'])){
+                                    $data[$original_pid]['data']['irkkcode'] = $kaigo_v['jigyosya'];
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
 
             ##########
             #
@@ -596,7 +689,8 @@ class CLSYSTEM{
         #print_r($data);
         foreach($data as $original_pid => $patient_data):
             $tmp_rand = uniqid();
-            $inv_id = $patient_data['data']['irkkcode'] . "-" . sprintf('%07d', strval($original_pid)) . "-" . $this->targetym ."-".$tmp_rand;
+            #内科の場合は先頭に「im-」をつける
+            $inv_id = "im-".$patient_data['data']['irkkcode'] . "-" . sprintf('%07d', strval($original_pid)) . "-" . $this->targetym ."-".$tmp_rand;
             $sql = "INSERT INTO acc_result (gid,rst,ap,ec,god,cod,am,tx,sf,ta,em,nm,original_pid,srm,targetym,reqid,rp_disableflag,rp_errorflag,rp_errormsg,carryforward_flag)
                     VALUES (0,0,0,0,0,'$inv_id','{$patient_data['total_copayment']}',0,0,0,'','','$original_pid',0,'{$this->targetym}',null,'{$patient_data['data']['direct_debit']}',0,'',0);";
             #echo $sql."\n";
@@ -730,8 +824,9 @@ class CLSYSTEM{
         
 
         $newpage_offset = 18;
-        $newpage_offset2 = 56;
+        $newpage_offset2 = 78;
         $newpage_offset3 = 20;
+        $first_page_offset = 22; // 1ページ目の明細行数制限（保険種別1行+ヘッダ1行+診療明細20行）
 
         $defaultConfig = (new Mpdf\Config\ConfigVariables())->getDefaults();
         $fontDirs = $defaultConfig['fontDir'];
@@ -811,25 +906,34 @@ class CLSYSTEM{
             }
 
             #請求番号
-            $inv_id = $patient_data['data']['irkkcode'] . "-" . $srm . "-" . sprintf('%07d', strval($original_pid));
+            $srm = isset($srm) ? $srm : "";     #im用に追加
+            $inv_id = (isset($patient_data['data']['irkkcode']) ? $patient_data['data']['irkkcode'] : '') . "-" . $srm . "-" . sprintf('%07d', strval($original_pid));
 
             ### ---------- 封筒窓 ---------- ###
 
             ## 封筒表紙（左窓）##
             $html .= "<div class=\"wrap\"></div>";
             if($this->format == "seikyu"){
-                $html .= "<p class=\"header-left\">請求書｜訪問診療</p>";
+                $html .= "<p class=\"header-left\">請求書</p>";
             }else if($this->format == "ryosyu"){
-                $html .= "<p class=\"header-left\">領収書｜訪問診療</p>";
+                $html .= "<p class=\"header-left\">領収書</p>";
             }
 
             #顧客情報
-            $html .= "<p class=\"patient-address\">〒".$patient_data['data']['postal_code']."-".$patient_data['data']['postal_code2']."<br>".$m_prefecture[$patient_data['data']['prefecture']]."<br>".$patient_data['data']['address1']."<br>".$patient_data['data']['address2']."</p>";
+            $tmp_pref = isset($patient_data['data']['prefecture']) && isset($m_prefecture[$patient_data['data']['prefecture']]) ? $m_prefecture[$patient_data['data']['prefecture']] : "";    #im用
+            $postal_code = isset($patient_data['data']['postal_code']) ? $patient_data['data']['postal_code'] : '';
+            $postal_code2 = isset($patient_data['data']['postal_code2']) ? $patient_data['data']['postal_code2'] : '';
+            $address1 = isset($patient_data['data']['address1']) ? $patient_data['data']['address1'] : '';
+            $address2 = isset($patient_data['data']['address2']) ? $patient_data['data']['address2'] : '';
+            $html .= "<p class=\"patient-address\">〒".$postal_code."-".$postal_code2."<br>".$tmp_pref."<br>".$address1."<br>".$address2."</p>";
 
-            if($patient_data['data']['shipto_name']){
-                $html .= "<p class=\"patient-name\">".$patient_data['data']['shipto_name']." 様<br><span class=\"patient-name-sub\">（".$patient_data['data']['name']." 様分）</span></p>";
+            if(isset($patient_data['data']['shipto_name']) && $patient_data['data']['shipto_name']){
+                $shipto_name = isset($patient_data['data']['shipto_name']) ? $patient_data['data']['shipto_name'] : '';
+                $name = isset($patient_data['data']['name']) ? $patient_data['data']['name'] : '';
+                $html .= "<p class=\"patient-name\">".$shipto_name." 様<br><span class=\"patient-name-sub\">（".$name." 様分）</span></p>";
             } else {
-                $html .= "<p class=\"patient-name\">".$patient_data['data']['name']." 様</p>";
+                $name = isset($patient_data['data']['name']) ? $patient_data['data']['name'] : '';
+                $html .= "<p class=\"patient-name\">".$name." 様</p>";
             }
 
             $html .= "<p class=\"patient-id\"><span>No.$inv_id</span></p>";
@@ -846,11 +950,22 @@ class CLSYSTEM{
 
             ## 封筒表紙（右窓）##
             $html .= "<p class=\"header-right\">医療機関名 <span class=\"header-right-sub\">※お問い合わせはこちらへ</span></p>";
-            $html .= "<p class=\"irkk-name\">".$patient_data['data']['irkkname']."</p>";
-            $html .= "<p class=\"irkk-address\">〒".$patient_data['data']['irkk_postal_code']."<br>".$patient_data['data']['irkk_prefecture']."<br>".$patient_data['data']['irkk_address1']."<br>".$patient_data['data']['irkk_address2']."<br>".$patient_data['data']['irkk_tel']."</p><br>";
+            $irkkname = isset($patient_data['data']['irkkname']) ? $patient_data['data']['irkkname'] : '';
+            $html .= "<p class=\"irkk-name\">".$irkkname."</p>";
+            $irkk_postal_code = isset($patient_data['data']['irkk_postal_code']) ? $patient_data['data']['irkk_postal_code'] : '';
+            $irkk_prefecture = isset($patient_data['data']['irkk_prefecture']) ? $patient_data['data']['irkk_prefecture'] : '';
+            $irkk_address1 = isset($patient_data['data']['irkk_address1']) ? $patient_data['data']['irkk_address1'] : '';
+            $irkk_address2 = isset($patient_data['data']['irkk_address2']) ? $patient_data['data']['irkk_address2'] : '';
+            $irkk_tel = isset($patient_data['data']['irkk_tel']) ? $patient_data['data']['irkk_tel'] : '';
+            $html .= "<p class=\"irkk-address\">〒".$irkk_postal_code."<br>".$irkk_prefecture."<br>".$irkk_address1."<br>".$irkk_address2."<br>".$irkk_tel."</p><br>";
 
             if($this->format == "seikyu"){
-                $html .= "<p class=\"irkk-account\">".$patient_data['data']['irkk_bank_name']." ".$patient_data['data']['irkk_bank_branch']." ".$m_bank_classification[$patient_data['data']['irkk_bank_clasification']]." ".$patient_data['data']['irkk_bank_no']."</p><p class=\"irkk-account2\">（口座振替ご利用の方は、振り込みは不要です）</p>";
+                $irkk_bank_name = isset($patient_data['data']['irkk_bank_name']) ? $patient_data['data']['irkk_bank_name'] : '';
+                $irkk_bank_branch = isset($patient_data['data']['irkk_bank_branch']) ? $patient_data['data']['irkk_bank_branch'] : '';
+                $irkk_bank_clasification = isset($patient_data['data']['irkk_bank_clasification']) && $patient_data['data']['irkk_bank_clasification'] != '' ? $patient_data['data']['irkk_bank_clasification'] : '';
+                $irkk_bank_clasification_text = ($irkk_bank_clasification != '' && isset($m_bank_classification[$irkk_bank_clasification])) ? $m_bank_classification[$irkk_bank_clasification] : '';
+                $irkk_bank_no = isset($patient_data['data']['irkk_bank_no']) ? $patient_data['data']['irkk_bank_no'] : '';
+                $html .= "<p class=\"irkk-account\">".$irkk_bank_name." ".$irkk_bank_branch." ".$irkk_bank_clasification_text." ".$irkk_bank_no."</p><p class=\"irkk-account2\">（口座振替ご利用の方は、振り込みは不要です）</p>";
             }
 
 
@@ -859,16 +974,19 @@ class CLSYSTEM{
             #echo $html;exit;
             #請求額
             if($this->manageperiod_flag == 1):
-                $seikyu_month = (isset($this->targetym) && $this->targetym != "") ? date('Y年m月',strtotime($this->targetym."01")) : date('Y年m月',strtotime($patient_data['data']['srm']."01"));
+                $seikyu_month = (isset($this->targetym) && $this->targetym != "") ? date('Y年n月',strtotime($this->targetym."01")) : date('Y年n月',strtotime($patient_data['data']['srm']."01"));
+                $shinryo_month = (isset($this->targetym) && $this->targetym != "") ? date('n月',strtotime($this->targetym."01 - 1month")) : date('n月',strtotime($patient_data['data']['srm']."01 - 1month"));
             else:
                 $seikyu_month = date('Y年m月',strtotime($this->srd_start . " + 1month")) ;
+                $shinryo_month = date('n月',strtotime($this->srd_start)) ;
             endif;
             
-            $html .= "<p id=\"shinryo-month\">".$seikyu_month."分</p>";
+            $html .= "<p id=\"shinryo-month\">".$seikyu_month."請求分<br><span id=\"shinryo-month2\">（".$shinryo_month."までの診療分）</span></p>";
+            $total_copayment = isset($patient_data['total_copayment']) ? $patient_data['total_copayment'] : 0;
             if($this->format == "seikyu"){
-                $html .= "<p id=\"total-copayment\">ご請求額　".number_format($patient_data['total_copayment'])." 円</p>";
+                $html .= "<p id=\"total-copayment\">ご請求額　".number_format($total_copayment)." 円</p>";
             } else if($this->format == "ryosyu"){
-                $html .= "<p id=\"total-copayment\">領収額　".number_format($patient_data['total_copayment'])." 円</p>";
+                $html .= "<p id=\"total-copayment\">領収額　".number_format($total_copayment)." 円</p>";
                 #$html .= "<p id=\"ryosyu-date\">領収日<br>2019/07/07</p>";
                 #領収日自由記入追加21-12-04
                 if($this->ryosyu_date !== ""){
@@ -882,49 +1000,49 @@ class CLSYSTEM{
             #保険
             $html .= "<table class='disp_table' id=\"hoken-table\"><tr>
                     <th rowspan=\"6\" class=\"side-header border_rb\">保険</th>";
-            $html .= "<th class=\"color333 hoken-col border_rb\">".$m_category['A']['title']."</th>
-                    <th class=\"color333 hoken-col border_rb\">".$m_category['B']['title']."</th>
-                    <th class=\"color333 hoken-col border_rb\">".$m_category['C']['title']."</th>
-                    <th class=\"color333 hoken-col border_rb\">".$m_category['D']['title']."</th>
-                    <th class=\"color333 hoken-col border_rb\">".$m_category['E']['title']."</th>
-                    <th class=\"color333 hoken-col border_rb\">".$m_category['F']['title']."</th></tr>";
+            $html .= "<th class=\"color333 hoken-col border_rb\">".(isset($m_category['A']['title']) ? $m_category['A']['title'] : '')."</th>
+                    <th class=\"color333 hoken-col border_rb\">".(isset($m_category['B']['title']) ? $m_category['B']['title'] : '')."</th>
+                    <th class=\"color333 hoken-col border_rb\">".(isset($m_category['C']['title']) ? $m_category['C']['title'] : '')."</th>
+                    <th class=\"color333 hoken-col border_rb\">".(isset($m_category['D']['title']) ? $m_category['D']['title'] : '')."</th>
+                    <th class=\"color333 hoken-col border_rb\">".(isset($m_category['E']['title']) ? $m_category['E']['title'] : '')."</th>
+                    <th class=\"color333 hoken-col border_rb\">".(isset($m_category['F']['title']) ? $m_category['F']['title'] : '')."</th></tr>";
             $html .= "<tr>
-                    <td class=\"tensu-row border_rb\">".number_format($patient_data['category']['A'])."点</td>
-                    <td class=\"tensu-row border_rb\">".number_format($patient_data['category']['B'])."点</td>
-                    <td class=\"tensu-row border_rb\">".number_format($patient_data['category']['C'])."点</td>
-                    <td class=\"tensu-row border_rb\">".number_format($patient_data['category']['D'])."点</td>
-                    <td class=\"tensu-row border_rb\">".number_format($patient_data['category']['E'])."点</td>
-                    <td class=\"tensu-row border_rb\">".number_format($patient_data['category']['F'])."点</td></tr>";
+                    <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['A']) ? $patient_data['category']['A'] : 0)."点</td>
+                    <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['B']) ? $patient_data['category']['B'] : 0)."点</td>
+                    <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['C']) ? $patient_data['category']['C'] : 0)."点</td>
+                    <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['D']) ? $patient_data['category']['D'] : 0)."点</td>
+                    <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['E']) ? $patient_data['category']['E'] : 0)."点</td>
+                    <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['F']) ? $patient_data['category']['F'] : 0)."点</td></tr>";
             $html .= "<tr>
-                    <th class=\"color333 border_rb\">".$m_category['G']['title']."</th>
-                    <th class=\"color333 font18 border_rb\">".$m_category['H']['title']."</th>
-                    <th class=\"color333 border_rb\">".$m_category['I']['title']."</th>
-                    <th class=\"color333 border_rb\">".$m_category['J']['title']."</th>
-                    <th class=\"color333 border_rb\">".$m_category['K']['title']."</th>
-                    <th class=\"color333 border_rb\">".$m_category['L']['title']."</th></tr>";
+                    <th class=\"color333 border_rb\">".(isset($m_category['G']['title']) ? $m_category['G']['title'] : '')."</th>
+                    <th class=\"color333 font18 border_rb\">".(isset($m_category['H']['title']) ? $m_category['H']['title'] : '')."</th>
+                    <th class=\"color333 border_rb\">".(isset($m_category['I']['title']) ? $m_category['I']['title'] : '')."</th>
+                    <th class=\"color333 border_rb\">".(isset($m_category['J']['title']) ? $m_category['J']['title'] : '')."</th>
+                    <th class=\"color333 border_rb\">".(isset($m_category['K']['title']) ? $m_category['K']['title'] : '')."</th>
+                    <th class=\"color333 border_rb\">".(isset($m_category['L']['title']) ? $m_category['L']['title'] : '')."</th></tr>";
             $html .= "<tr>
-                    <td class=\"tensu-row border_rb\">".number_format($patient_data['category']['G'])."点</td>
-                    <td class=\"tensu-row border_rb\">".number_format($patient_data['category']['H'])."点</td>
-                    <td class=\"tensu-row border_rb\">".number_format($patient_data['category']['I'])."点</td>
-                    <td class=\"tensu-row border_rb\">".number_format($patient_data['category']['J'])."点</td>
-                    <td class=\"tensu-row border_rb\">".number_format($patient_data['category']['K'])."点</td>
-                    <td class=\"tensu-row border_rb\">".number_format($patient_data['category']['L'])."点</td></tr>";
+                    <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['G']) ? $patient_data['category']['G'] : 0)."点</td>
+                    <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['H']) ? $patient_data['category']['H'] : 0)."点</td>
+                    <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['I']) ? $patient_data['category']['I'] : 0)."点</td>
+                    <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['J']) ? $patient_data['category']['J'] : 0)."点</td>
+                    <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['K']) ? $patient_data['category']['K'] : 0)."点</td>
+                    <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['L']) ? $patient_data['category']['L'] : 0)."点</td></tr>";
             $html .= "<tr>
-                    <th class=\"color333 font16 border_rb\">".$m_category['M']['title']."</th>
-                    <th class=\"color333 border_rb\">".$m_category['N']['title']."</th>
-                    <th class=\"color333 border_rb\">".$m_category['O']['title']."</th>
+                    <th class=\"color333 font16 border_rb\">".(isset($m_category['M']['title']) ? $m_category['M']['title'] : '')."</th>
+                    <th class=\"color333 border_rb\">".(isset($m_category['N']['title']) ? $m_category['N']['title'] : '')."</th>
+                    <th class=\"color333 border_rb\">".(isset($m_category['O']['title']) ? $m_category['O']['title'] : '')."</th>
                     <th class=\"color333 border-border-top border_b\">合計</th>
                     <th class=\"color333 border-border-top font14 border_b\">居宅療養管理指導(介護保険)</th>
                     <th class=\"color333 border-border-top border_b\">一部負担金</th></tr>";
 
             #介護保険は1円まで金額出す。一部負担金の四捨五入を解除
             $html .= "<tr>
-                    <td class=\"tensu-row border_rb\">".number_format($patient_data['category']['M'])."点</td>
-                    <td class=\"tensu-row border_rb\">".number_format($patient_data['category']['N'])."点</td>
-                    <td class=\"tensu-row border_rb\">".number_format($patient_data['category']['O'])."点</td>
-                    <td class=\"tensu-row border-border-bottom\">".number_format($patient_data['total_tensu'])."点</td>
-                    <td class=\"tensu-row border-border-bottom\">".number_format($patient_data['srm']['total_service_unit'])."単位</td>
-                    <td class=\"tensu-row border-border-bottom\">".number_format($patient_data['ichibufutankin'])."円</td></tr>";
+                    <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['M']) ? $patient_data['category']['M'] : 0)."点</td>
+                    <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['N']) ? $patient_data['category']['N'] : 0)."点</td>
+                    <td class=\"tensu-row border_rb\">".number_format(isset($patient_data['category']['O']) ? $patient_data['category']['O'] : 0)."点</td>
+                    <td class=\"tensu-row border-border-bottom\">".number_format(isset($patient_data['total_tensu']) ? $patient_data['total_tensu'] : 0)."点</td>
+                    <td class=\"tensu-row border-border-bottom\">".number_format(isset($patient_data['srm']['total_service_unit']) ? $patient_data['srm']['total_service_unit'] : 0)."単位</td>
+                    <td class=\"tensu-row border-border-bottom\">".number_format(isset($patient_data['ichibufutankin']) ? $patient_data['ichibufutankin'] : 0)."円</td></tr>";
             $html .= "</table><br/>\n";
 
             #保険外負担
@@ -933,6 +1051,10 @@ class CLSYSTEM{
             $html .= "<th class=\"hokengai-col border_rb\">自由診療</th>
                     <th class=\"hokengai-col border_rb\">販売品</th>
                     <th class=\"hokengai-col border_rb\">その他</th></tr>";
+                
+            $patient_data['app_cat']['1'] = isset($patient_data['app_cat']['1']) ? $patient_data['app_cat']['1'] : 0;
+            $patient_data['app_cat']['2'] = isset($patient_data['app_cat']['2']) ? $patient_data['app_cat']['2'] : 0;
+            $patient_data['app_cat']['3'] = isset($patient_data['app_cat']['3']) ? $patient_data['app_cat']['3'] : 0;
             $html .= "<tr><td class='border_r'>".number_format($patient_data['app_cat']['1'])."円</td>
                     <td class='border_r'>".number_format($patient_data['app_cat']['2'])."円</td>
                     <td class='border_r'>".number_format($patient_data['app_cat']['3'])."円</td></tr>";
@@ -954,7 +1076,8 @@ class CLSYSTEM{
             $html .= "<tr><th class=\"color333 border_rb\">前回未収金</th>
                         <th class=\"color333 border_rb\">前回過剰金</th>
                         <th class=\"color333 border_rb\">今回ご請求額</th></tr>";
-            $html .= "<tr><td class='border_r'>0円</td><td class='border_r'>0円</td><td class='border_r'>".number_format($patient_data['total_copayment'])."円</td></tr>";
+            $total_copayment_value = isset($patient_data['total_copayment']) ? $patient_data['total_copayment'] : 0;
+            $html .= "<tr><td class='border_r'>0円</td><td class='border_r'>0円</td><td class='border_r'>".number_format($total_copayment_value)."円</td></tr>";
             $html .= "<tr><td class='border_rb'>&nbsp;</td><td class='border_rb'>&nbsp;</td><td class='border_rb'>&nbsp;</td></tr>";
             $html .= "</table></div>";
 
@@ -970,7 +1093,82 @@ class CLSYSTEM{
             $row_count = 0;
             $global_count = 0;
             $first_flag = true;
+            $iryo_p2_count = 0;
+            $kaigo_p2_count = 0;
+            
+            #介護保険明細があるかチェック
+            $has_kaigo = isset($patient_data['srm']) && count($patient_data['srm']) > 0;
+            
+            #介護保険明細がある場合は先に出力
+            if($has_kaigo){
+                #介護保険（先に出力）
+                if(isset($patient_data['srm'])){
+                    $cnt_kaigo = 0;
+                    foreach($patient_data['srm'] as $kaigo_key => $kaigo_loop){
+                        if($kaigo_key == "data"):
+                            #保険種別（1行）とヘッダ行（1行）をカウント
+                            $row_count += 2;
+                            $html .= "<div id=\"iryo-meisai-table\"><table class='disp_table'><tr><th colspan=5 class='border_rb'>介護保険</th></tr><tr>
+                            <th class=\"border_b meisai-title-row\">項目</th>
+                            <th class=\"tensu-col border_b meisai-title-row\">単位</th>
+                            <th class=\"x-col border_b meisai-title-row\"></th>
+                            <th class=\"kaisu-col border_b meisai-title-row\">回数</th>
+                            <th class=\"border_rb meisai-title-row\">算定日</th></tr>";
+                            foreach($kaigo_loop as $srm_value => $kaigo_value){
+                                $srm_ym = date('Y年m月',strtotime($srm_value."01"));
 
+                                $html .= "<tr><td colspan=\"5\" class=\"date-row border_r\">●".$srm_ym."</td></tr>";
+                                $row_count++;
+
+                                if(isset($kaigo_value['sid'])){
+                                    foreach ($kaigo_value['sid'] as $meisai){
+                                        $tmp_tensu = isset($patient_data['srm']['data']['tensu']) ? $patient_data['srm']['data']['tensu'] : 0;
+                                        $tmp_rate = isset($patient_data['srm']['data']['rate']) ? $patient_data['srm']['data']['rate'] : 0;
+                                        $copeyment = 10 * $tmp_tensu * $tmp_rate /100;
+                                        $html .= "<tr><td class=\"item-col non-border\">".$meisai['service_name']."</td><td class=\"tensu-col non-border\">".$meisai['service_unit']."</td>
+                                        <td class=\"x-col non-border\">×</td>
+                                        <td class=\"kaisu-col non-border\">".$meisai['kaisu']."</td>
+                                        <td class=\"date-col border_r\" align=center>".$meisai['tekiyo']."</td></tr>";
+
+                                        $row_count++;
+
+                                        $check_offset = $newpage_offset2;
+                                        if($row_count == $check_offset){
+                                            $row_count = 0;
+                                            $global_count++;
+                                            $tmp = "<div style='page-break-before: always;'></div>";
+                                            $kaigo_p2_count++;
+                                            $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>{$tmp}<div id=\"iryo-meisai-table\"><table class='disp_table'><tr><th colspan=5 class='border_rb'>介護保険</th></tr><tr>
+                                            <th class=\"border_b meisai-title-row\">項目</th>
+                                            <th class=\"tensu-col border_b meisai-title-row\">単位</th>
+                                            <th class=\"x-col border_b meisai-title-row\"></th>
+                                            <th class=\"kaisu-col border_b meisai-title-row\">回数</th>
+                                            <th class=\"border_rb meisai-title-row\">算定日</th></tr>";
+                                            #保険種別（1行）とヘッダ行（1行）をカウント
+                                            $row_count += 2;
+                                        }
+                                    }
+                                }
+                                $html .= "<tr><td class=\"sum-row border_r\" colspan=\"5\"><p>小計:".number_format($kaigo_value['tensu'])."点 　 ".number_format($kaigo_value['copayment'])."円 　 負担:".$kaigo_value['rate']."%</p></td></tr>";
+                                $row_count++;
+                                
+                                $check_offset = $newpage_offset2;
+                                if($row_count == $check_offset){
+                                    $row_count = 0;
+                                    $global_count++;
+                                    $tmp = "<div style='page-break-before: always;'></div>";
+                                    $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>";
+                                }
+                            }
+                            $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>";
+                        endif;
+                    }
+                }
+            }
+            
+            #医療保険処理開始前にrow_countをリセット
+            $row_count = 0;
+            
             #医療保険（左列）
             $html .= "<div id=\"iryo-meisai-table\">
                     <table class='disp_table'><tr><th colspan=\"5\" class='border_rb'>医療保険</th></tr><tr>
@@ -979,6 +1177,9 @@ class CLSYSTEM{
                     <th class=\"tensu-col border_b\">点数</th>
                     <th class=\"x-col border_b\"></th>
                     <th class=\"kaisu-col border_rb\">回数</th></tr>";
+            
+            #保険種別（1行）とヘッダ行（1行）をカウント
+            $row_count += 2;
 
     #診療月でソート月を跨ぐ対策
     ksort($patient_data['srd']);
@@ -990,45 +1191,35 @@ class CLSYSTEM{
         foreach($vv as $k => $v){
             #print_r($v);
 
-            if($row_count == 0 && $global_count > 0){
-
-                $html .= "{$tmp}<div id=\"iryo-meisai-table\"><table class='disp_table'><tr><th colspan=5 class='border_rb'>医療保険</th></tr><tr>
-                <th class=\"category-col border_b\">部</th>
-                <th class=\"border_b\">項目</th>
-                <th class=\"tensu-col border_b\">点数</th>
-                <th class=\"x-col border_b\"></th>
-                <th class=\"kaisu-col border_rb\">回数</th></tr>";
-
-            }
-
-            #ルーティン①：日付の行の処理
-            $html .= "<tr><td colspan=\"5\" class=\"date-row border_r\">●".date('Y年m月d日',strtotime($k))."</td></tr>";
-
-            $row_count++;
-
-            if($global_count < 2){
-                $check_offset = $newpage_offset;
+            #介護保険明細がない場合は1ページ目は22行で分割
+            if(!$has_kaigo && $global_count == 0){
+                $check_offset = $first_page_offset;
             }else{
                 $check_offset = $newpage_offset2;
             }
 
-            if($row_count == $check_offset){
+            #ページ分割チェック：日付行を出力する前にチェック
+            if($row_count >= $check_offset){
                 $row_count = 0;
                 $global_count++;
                 #echo "ここでglobalcount繰り上がり1";
-                if($global_count%2 == 0){
-                    $tmp = "<div class='clearfix'>&nbsp;</div>";
-                }else{
-                    $tmp = "";
-                }
+                $tmp = "<div style='page-break-before: always;'></div>";
 
+                $iryo_p2_count++;
                 $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>{$tmp}<div id=\"iryo-meisai-table\"><table class='disp_table'><tr><th colspan=5 class='border_rb'>医療保険</th></tr><tr>
                 <th class=\"category-col border_b\">部</th>
                 <th class=\"border_b\">項目</th>
                 <th class=\"tensu-col border_b\">点数</th>
                 <th class=\"x-col border_b\"></th>
                 <th class=\"kaisu-col border_rb\">回数</th></tr>";
+                #保険種別（1行）とヘッダ行（1行）をカウント
+                $row_count += 2;
             }
+
+            #ルーティン①：日付の行の処理
+            $html .= "<tr><td colspan=\"5\" class=\"date-row border_r\">●".date('Y年m月d日',strtotime($k))."</td></tr>";
+
+            $row_count++;
 
             #ルーティン②：診療行の処理
             #アルファベット順にソート
@@ -1052,29 +1243,27 @@ class CLSYSTEM{
 
                 $row_count++;
 
-                if($global_count < 2){
-                    $check_offset = $newpage_offset;
+                #介護保険明細がない場合は1ページ目は22行で分割
+                if(!$has_kaigo && $global_count == 0){
+                    $check_offset = $first_page_offset;
                 }else{
                     $check_offset = $newpage_offset2;
                 }
-                if($row_count == $check_offset){
+                if($row_count >= $check_offset){
                     $row_count = 0;
                     $global_count++;
                     #echo "ここでglobalcount繰り上がり2";
-                    if($global_count%2 == 0){
-                        #echo "通過A";
-                        $tmp = "<div class='clearfix'>&nbsp;</div><div style='margin-top:100px;'>&nbsp;</div>";
-                    }else{
-                        #echo "通過B";
-                        $tmp = "";
-                    }
+                    $tmp = "<div style='page-break-before: always;'></div>";
 
-                    $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>{$tmp}<div id=\"iryo-meisai-table\"><table class='disp_table'><tr><th colspan=5 class='border_rb'>医療保険</th></tr><tr>
+                    $iryo_p2_count++;
+                    $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>{$tmp}<div id=\"iryo-meisai-table\"><table class='disp_table'><tr><th colspan=5 class='border_rb'>{$iryo_p2_count} 医療保険</th></tr><tr>
                     <th class=\"category-col border_b\">部</th>
                     <th class=\"border_b\">項目</th>
                     <th class=\"tensu-col border_b\">点数</th>
                     <th class=\"x-col border_b\"></th>
                     <th class=\"kaisu-col border_rb\">回数</th></tr>";
+                    #保険種別（1行）とヘッダ行（1行）をカウント
+                    $row_count += 2;
                 }
                 #echo "通過C";
             }
@@ -1084,174 +1273,33 @@ class CLSYSTEM{
 
             $row_count++;
 
-            if($global_count < 2){
-                $check_offset = $newpage_offset;
+            #介護保険明細がない場合は1ページ目は22行で分割
+            if(!$has_kaigo && $global_count == 0){
+                $check_offset = $first_page_offset;
             }else{
                 $check_offset = $newpage_offset2;
             }
             #echo $row_count ."---".$check_offset."<br>\n";
-            if($row_count == $check_offset){
+            if($row_count >= $check_offset){
                 $row_count = 0;
                 $global_count++;
                 #echo "ここでglobalcount繰り上がり3";
-                if($global_count%2 == 0){
-                    $tmp = "<div class='clearfix'>&nbsp;</div>";
-                }else{
-                    $tmp = "";
-                }
+                $tmp = "<div style='page-break-before: always;'></div>";
 
-                $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>";
-                
-                /*
-                $html .= "{$tmp}<div id=\"iryo-meisai-table\"><table class='disp_table'><tr><th colspan=5 class='border_rb'>医療保険</th></tr><tr>
-                <th class=\"category-col non-border\">部</th>
-                <th class=\"non-border\">項目</th>
-                <th class=\"tensu-col non-border\">点数</th>
-                <th class=\"x-col non-border\"></th>
-                <th class=\"kaisu-col border_r\">回数</th></tr>";
-                */
+                $iryo_p2_count++;
+                $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>{$tmp}<div id=\"iryo-meisai-table\"><table class='disp_table'><tr><th colspan=5 class='border_rb'>医療保険</th></tr><tr>
+                <th class=\"category-col border_b\">部</th>
+                <th class=\"border_b\">項目</th>
+                <th class=\"tensu-col border_b\">点数</th>
+                <th class=\"x-col border_b\"></th>
+                <th class=\"kaisu-col border_rb\">回数</th></tr>";
+                #保険種別（1行）とヘッダ行（1行）をカウント
+                $row_count += 2;
             }
         }#foreach内側
     }#foreach外側
 
-        $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table>";
-
-        #echo "現在地：".$global_count."\n";continue;
-
-        ### 220428 介護データがある場合は、回り込みdivを閉じない / 医療保険が左列だけだったら介護の開始divが必要
-        #介護がある場合
-        #echo "この時点で".$row_count."---";
-        if( isset($patient_data['srm']) && count($patient_data['srm']) > 0 ):
-            #現在地が左側（global_ccoung=0）
-            if($global_count == 0):
-                #$html .= "global={$global_count}-rowcount-{$row_count}-ここ1";
-                $html .= "</div><div id=\"iryo-meisai-table\">";
-            elseif($global_count == 1):
-
-                #中途半端な場所ならページ変える
-                if($row_count > 12):
-                    #$html .= "global={$global_count}-rowcount-{$row_count}-ここ2";
-                   # echo $row_count."---";
-                    $html .= "</div><div class='clearfix'>&nbsp;</div><div id=\"iryo-meisai-table\">";
-                    $row_count = 0;
-                else:
-                    #$html .= "global={$global_count}-rowcount-{$row_count}-ここ3";
-
-                    #row_countが18でglobalcountが1増加した直後、閉じdiv</div>が入るからその考慮をする
-                    if($row_count == 0):
-                        $html .= "<div id=\"iryo-meisai-table\">";
-                    else:
-                        $html .= "<br>";
-                    endif;
-                    #$html .= "</div><div class='clearfix'>&nbsp;</div><div id=\"iryo-meisai-table\">";
-                    #$html .= "<br></div><div>";
-                endif;
-            endif;
-        #介護がない場合
-        else:
-            #$html .= "介護なし";
-            $html .= "</div>";
-        endif;
-
-        #介護保険（右列）
-        #foreach($patient_data['srm'] as $kaigo_key => $kaigo_value){
-        if(isset($patient_data['srm'])){
-            foreach($patient_data['srm'] as $kaigo_key => $kaigo_loop){
-                // if($original_pid == 151){
-                //     print_r($kaigo_value);
-                // }
-                if($kaigo_key == "data"):
-                    $row_count++;$row_count++;$row_count++;
-                    $html .= "<table class='disp_table'><tr><th colspan=5 class='border_rb'>介護保険</th></tr><tr>
-                    <th class=\"border_b meisai-title-row\">項目</th>
-                    <th class=\"tensu-col border_b meisai-title-row\">単位</th>
-                    <th class=\"x-col border_b meisai-title-row\"></th>
-                    <th class=\"kaisu-col border_b meisai-title-row\">回数</th>
-                    <th class=\"border_rb meisai-title-row\">算定日</th></tr>";
-                    foreach($kaigo_loop as $srm_value => $kaigo_value){
-                        $srm_ym = date('Y年m月',strtotime($srm_value."01"));
-
-                        $html .= "<tr><td colspan=\"5\" class=\"date-row border_r\">●".$srm_ym."</td></tr>";
-                        $row_count++;
-
-                        if(isset($kaigo_value['sid'])){
-                            foreach ($kaigo_value['sid'] as $meisai){
-                                $tmp_tensu = isset($patient_data['srm']['data']['tensu']) ? $patient_data['srm']['data']['tensu'] : 0;
-                                $tmp_rate = isset($patient_data['srm']['data']['rate']) ? $patient_data['srm']['data']['rate'] : 0;
-                                $copeyment = 10 * $tmp_tensu * $tmp_rate /100;
-                                $html .= "<tr><td class=\"item-col non-border\">".$meisai['service_name']."</td><td class=\"tensu-col non-border\">".$meisai['service_unit']."</td>
-                                <td class=\"x-col non-border\">×</td>
-                                <td class=\"kaisu-col non-border\">".$meisai['kaisu']."</td>
-                                <td class=\"date-col border_r\" align=center>".$meisai['tekiyo']."</td></tr>";
-
-
-
-                                $row_count++;
-
-                                if($global_count < 2){
-                                    $check_offset = $newpage_offset;
-                                }else{
-                                    $check_offset = $newpage_offset2;
-                                }
-                                /*
-                                if($row_count > 12):
-                                    $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div><div id=\"iryo-meisai-table\">";
-                                    $html .= "<table class='disp_table'><tr><th colspan=5 class='border_rb'>介護保険</th></tr><tr>
-                                    <th class=\"border_b meisai-title-row\">項目</th>
-                                    <th class=\"tensu-col border_b meisai-title-row\">単位</th>
-                                    <th class=\"x-col border_b meisai-title-row\"></th>
-                                    <th class=\"kaisu-col border_b meisai-title-row\">回数</th>
-                                    <th class=\"border_rb meisai-title-row\">算定日</th></tr>";
-                                else:
-                                    $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div><div id=\"\">";
-                                    $html .= "<table class='disp_table'><tr><th colspan=5 class='border_rb'>介護保険</th></tr><tr>
-                                    <th class=\"border_b meisai-title-row\">項目</th>
-                                    <th class=\"tensu-col border_b meisai-title-row\">単位</th>
-                                    <th class=\"x-col border_b meisai-title-row\"></th>
-                                    <th class=\"kaisu-col border_b meisai-title-row\">回数</th>
-                                    <th class=\"border_rb meisai-title-row\">算定日</th></tr>";
-                                endif;
-                                */
-
-                                if($row_count == $check_offset){
-                                    $row_count = 0;
-                                    $global_count++;
-                                    $html .= "ここでglobalcount繰り上がり4";
-                                    if($global_count%2 == 0){
-                                        $tmp = "<div class='clearfix'>&nbsp;</div>";
-                                    }else{
-                                        $tmp = "";
-                                    }
-
-                                    #rowcountが13以上だったら次のブロックいく？
-
-                                /*
-                                    if($row_count > 12):
-                                        $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div><div id=\"iryo-meisai-table\">";
-                                    else:
-                                        $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div><div id=\"\">";
-                                    endif;*/
-                                /*
-                                    $html .= "<table class='disp_table'><tr><th colspan=5 class='border_rb'>介護保険</th></tr><tr>
-                                    <th class=\"border_b meisai-title-row\">項目</th>
-                                    <th class=\"tensu-col border_b meisai-title-row\">単位</th>
-                                    <th class=\"x-col border_b meisai-title-row\"></th>
-                                    <th class=\"kaisu-col border_b meisai-title-row\">回数</th>
-                                    <th class=\"border_rb meisai-title-row\">算定日</th></tr>";
-                                    */
-                                }
-
-
-
-                            }#下のforeach
-                        }
-                        $html .= "<tr><td class=\"sum-row border_r\" colspan=\"5\"><p>小計:".number_format($kaigo_value['tensu'])."点 　 ".number_format($kaigo_value['copayment'])."円 　 負担:".$kaigo_value['rate']."%</p></td></tr>";
-                    }#上のforeach
-                    #$html .= "<tr><td class=\"sum-row-kaigo border_rb\" colspan=\"5\"><p>小計:".number_format($patient_data['srm']['data']['tensu'])."単位　　 ".number_format($copeyment)."円 　負担:".$patient_data['srm']['data']['rate']."%</p></td></tr></table></div>";
-                    $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>";
-                endif;
-            }
-        }
+        $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>";
 
         #clearfix
         $html .= "<div class=\"clearfix\"></div>";
@@ -1276,9 +1324,9 @@ position:absolute;
 top: 100px;
 left: 86.74px;
 width: 433.71px;
-background-color: #555;
+background-color: #000;
 border-radius: 5px;
-font-size:24px;
+font-size:60px;
 letter-spacing:0.25em;
 padding:5px;
 color: #fff;
@@ -1377,12 +1425,17 @@ font-size: 20px;
 
 #shinryo-month{
 position:absolute;
-top:730px;
+/*top:730px;*/
+top:690px;
 left:120px;
 font-size:36px;
 text-align:center;
 width:400px;
 }
+#shinryo-month2{
+font-size:28px;
+}
+
 #total-copayment{
 margin: 30px auto;
 font-size:36px;
@@ -1405,7 +1458,6 @@ border-spacing:0;
 border-collapse:none;
 text-align:center;
 font-size:20px;
-
 padding:0;
 margin:0;
 }
@@ -1429,7 +1481,7 @@ border-bottom:1px solid #262626;
 th{
 background-color: #EEEDED;
 }
-th,td{padding:5px;}
+th,td{padding:2px 5px;line-height:1.0;}
 
 #hoken-table{
 table-layout: fixed;
@@ -1492,15 +1544,26 @@ border-bottom:3px solid #262626;
 }
 
 #iryo-meisai-table{
-width:665px;
-float:left;
-padding-right:30px;
+width:100%;
+padding-right:0px;
 }
 #iryo-meisai-table table{
 width:100%;
+page-break-inside: avoid;
 }
 .non-border{
 border:none;
+padding-top:2px;
+padding-bottom:2px;
+line-height:1.0;
+}
+#iryo-meisai-table th, #iryo-meisai-table td{
+padding:2px 5px;
+line-height:1.0;
+}
+#iryo-meisai-table .non-border{
+padding-top:2px;
+padding-bottom:2px;
 }
 .meisai-title-row{
 border-bottom:1px solid #262626;
@@ -1566,11 +1629,25 @@ EOD;
             $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
 
             if($cnt < count($data)){
+                // 両面印刷対応：次の患者が奇数ページから始まるように調整
+                // WriteHTML後の現在のページ番号を取得（この患者の最後のページ番号）
+                // AddPage()を呼ぶと次のページが追加されるので、次の患者の最初のページ番号は current_page + 1 になる
+                $current_page = $mpdf->page;
+                $next_patient_start_page = $current_page + 1;
+                // 次の患者の最初のページが偶数になる場合は、空白ページを追加して奇数にする
+                if($next_patient_start_page % 2 == 0){
+                    // 空白ページを追加（これで次の患者の最初のページは奇数になる）
+                    $mpdf->AddPage();
+                }
+                // 次の患者のページを追加
                 $mpdf->AddPage();
             }
             $cnt++;
 
             #if($cnt > 3) break;
+        }
+        if(isset($_REQUEST['renew'])){
+        #echo $html;exit;
         }
         #echo $html;exit;
         if($this->pdf_path != ""):
@@ -1581,6 +1658,8 @@ EOD;
         endif;
        
     }
+    
+
 
     function getKaisyuData(){
         #新バージョン
@@ -1593,9 +1672,7 @@ EOD;
                     , accountpatient_relation as c 
                     WHERE a.original_pid = b.original_pid 
                     and a.original_pid = c.original_pid 
-                    and  a.targetym = '{$this->targetym}' ";
-            #$sql .= " order by a.rid asc";
-            $sql .= " order by b.original_pid asc";
+                    and  a.targetym = '{$this->targetym}' order by a.rid asc";
 
             $stmt = $this->db->databasequery($sql);
             $tmp_acc_data = $stmt->fetchALL(PDO::FETCH_ASSOC);
@@ -1635,7 +1712,11 @@ EOD;
 
         $data = $this->getKaisyuData();
         $irkk_data = $this->getAccountInfo();
-
+if(isset($_REQUEST['testview'])){
+    print_r($data);
+    print_r($irkk_data);
+    exit;
+}
         $defaultConfig = (new Mpdf\Config\ConfigVariables())->getDefaults();
         $fontDirs = $defaultConfig['fontDir'];
 
@@ -1805,9 +1886,9 @@ EOD;
                 top: 100px;
                 left: 86.74px;
                 width: 433.71px;
-                background-color: #555;
+                background-color: #000;
                 border-radius: 5px;
-                font-size:24px;
+                font-size:60px;
                 letter-spacing:0.25em;
                 padding:5px;
                 color: #fff;
