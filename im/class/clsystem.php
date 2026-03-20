@@ -1,5 +1,5 @@
 <?php
-ini_set( 'display_errors', 1 );
+ini_set( 'display_errors', 0 );
 ini_set("memory_limit", "5120M");
 set_time_limit(0);
 
@@ -42,7 +42,23 @@ class CLSYSTEM{
         
         #if($this->manageperiod_flag == 1 && $this->targetym > 0):
         if($this->readFromAccDetail):
-            $sql = "SELECT a.*, b.* FROM acc_result as a , acc_detail as b , patient_info as c WHERE a.rid = b.rid and a.original_pid = c.original_pid AND a.targetym = '{$this->targetym}'";
+            #$sql = "SELECT a.*, b.* FROM acc_result as a , acc_detail as b , patient_info as c WHERE a.rid = b.rid and a.original_pid = c.original_pid AND a.targetym = '{$this->targetym}'";
+            $sql = "SELECT a.*, b.* 
+                    FROM acc_result AS a 
+                    INNER JOIN acc_detail AS b 
+                        ON a.rid = b.rid 
+                    INNER JOIN patient_info AS c 
+                        ON a.original_pid = c.original_pid 
+                    LEFT JOIN (
+                        SELECT
+                            original_pid,
+                            MIN(original_irkkcode) AS original_irkkcode
+                        FROM re_shinryo
+                        GROUP BY original_pid
+                    ) AS rs
+                        ON c.original_pid = rs.original_pid
+                    WHERE a.targetym = '{$this->targetym}'";
+
             if($this->original_pid > 0):
                 $sql .= " AND a.original_pid = {$this->original_pid} ";
             endif;
@@ -54,6 +70,13 @@ class CLSYSTEM{
             }else if($this->format == "ryosyu"){
                 $sql .= " AND c.receipt_output = 0 ";
             }
+
+            #251230 ソート順：医療機関ID昇順,患者ID昇順
+            $sql .= "
+                ORDER BY
+                    rs.original_irkkcode ASC,
+                    a.original_pid ASC
+                ";
             #echo $sql;exit;
             $stmt = $this->db->databasequery($sql);
             $acc_detail_count = $stmt->rowCount();
@@ -104,7 +127,13 @@ class CLSYSTEM{
 
             $sql .= " AND patient_info.disp = 0 ";
             #$sql .= " order by re_shinryo.srd,re_shinryo.category";
-            $sql .= " order by re_shinryo.sid";
+            #$sql .= " order by re_shinryo.sid";
+
+            $sql .= "
+                    ORDER BY
+                        re_shinryo.original_irkkcode ASC,
+                        patient_info.original_pid ASC
+                    ";
 
             #echo $sql."<br>\n";
             #exit;
@@ -686,7 +715,7 @@ class CLSYSTEM{
 
     function generateRPdata(){
         $data = $this->getPaymentData();
-        #print_r($data);
+        #print_r($data);exit;
         foreach($data as $original_pid => $patient_data):
             $tmp_rand = uniqid();
             #内科の場合は先頭に「im-」をつける
