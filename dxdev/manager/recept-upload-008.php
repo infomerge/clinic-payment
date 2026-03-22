@@ -794,7 +794,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
                     $category = '-';
                 }
 
-                $tns = $array_si['点数'];
+                $tns = (int)$array_si['点数'];
                 $kaisu = $array_si['回数'];
                 $ftn = $array_si['負担区分'];
 
