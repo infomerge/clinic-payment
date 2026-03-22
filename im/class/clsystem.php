@@ -855,8 +855,6 @@ class CLSYSTEM{
         $newpage_offset = 18;
         $newpage_offset2 = 78;
         $newpage_offset3 = 20;
-        $first_page_offset = 22; // 1ページ目の明細行数制限（保険種別1行+ヘッダ1行+診療明細20行）
-
         $defaultConfig = (new Mpdf\Config\ConfigVariables())->getDefaults();
         $fontDirs = $defaultConfig['fontDir'];
 
@@ -869,9 +867,9 @@ class CLSYSTEM{
             'margin_left' => 10, // 左の余白
             'margin_right' => 10, // 右の余白
             'margin_top' => 6, //上の余白
-            'margin_bottom' => 0, //下の余白
+            'margin_bottom' => 10, //下の余白（本文とフッター番号の重なり防止）
             'margin_header' => 0, //ヘッダーの余白
-            'margin_footer' => 0, //フッターの余白
+            'margin_footer' => 8, //フッター領域（ページ番号）
             'dpi' => 150,
             'img_dpi' => 150,
             'debug'=> true,
@@ -887,6 +885,8 @@ class CLSYSTEM{
             ],
             'default_font' => 'ipamjm',
         ]);
+        $mpdf->defaultfooterline = 0;
+        $mpdf->SetFooter('|{PAGENO}|');
         /*$mpdf->fontdata = [
             "trebuchetms" => [
                 'R' => "trebuc.ttf",
@@ -1195,20 +1195,20 @@ class CLSYSTEM{
                 }
             }
             
-            #医療保険処理開始前にrow_countをリセット
-            $row_count = 0;
-            
-            #医療保険（左列）
-            $html .= "<div id=\"iryo-meisai-table\">
-                    <table class='disp_table'><tr><th colspan=\"5\" class='border_rb'>医療保険</th></tr><tr>
+            #医療保険明細：請求書1ページ目（表紙〜介護明細まで）には載せない。1ページに余白があっても必ず改ページ後から開始し、
+            #医療明細の改ページ行数は newpage_offset2 のみ（全ページ一定）
+            $has_iryo_meisai = isset($patient_data['srd']) && is_array($patient_data['srd']) && count($patient_data['srd']) > 0;
+            $iryo_block_head = "<div id=\"iryo-meisai-table\"><table class='disp_table'><tr><th colspan=5 class='border_rb'>医療保険</th></tr><tr>
                     <th class=\"category-col border_b\">部</th>
                     <th class=\"border_b\">項目</th>
                     <th class=\"tensu-col border_b\">点数</th>
                     <th class=\"x-col border_b\"></th>
                     <th class=\"kaisu-col border_rb\">回数</th></tr>";
-            
-            #保険種別（1行）とヘッダ行（1行）をカウント
-            $row_count += 2;
+
+            if($has_iryo_meisai){
+            $html .= "<div style=\"page-break-before: always;\"></div>";
+            $html .= $iryo_block_head;
+            $row_count = 2;
 
     #診療月でソート月を跨ぐ対策
     ksort($patient_data['srd']);
@@ -1220,27 +1220,16 @@ class CLSYSTEM{
         foreach($vv as $k => $v){
             #print_r($v);
 
-            #介護保険明細がない場合は1ページ目は22行で分割
-            if(!$has_kaigo && $global_count == 0){
-                $check_offset = $first_page_offset;
-            }else{
-                $check_offset = $newpage_offset2;
-            }
+            $check_offset = $newpage_offset2;
 
             #ページ分割チェック：日付行を出力する前にチェック
             if($row_count >= $check_offset){
                 $row_count = 0;
-                $global_count++;
                 #echo "ここでglobalcount繰り上がり1";
                 $tmp = "<div style='page-break-before: always;'></div>";
 
                 $iryo_p2_count++;
-                $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>{$tmp}<div id=\"iryo-meisai-table\"><table class='disp_table'><tr><th colspan=5 class='border_rb'>医療保険</th></tr><tr>
-                <th class=\"category-col border_b\">部</th>
-                <th class=\"border_b\">項目</th>
-                <th class=\"tensu-col border_b\">点数</th>
-                <th class=\"x-col border_b\"></th>
-                <th class=\"kaisu-col border_rb\">回数</th></tr>";
+                $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>{$tmp}".$iryo_block_head;
                 #保険種別（1行）とヘッダ行（1行）をカウント
                 $row_count += 2;
             }
@@ -1272,25 +1261,14 @@ class CLSYSTEM{
 
                 $row_count++;
 
-                #介護保険明細がない場合は1ページ目は22行で分割
-                if(!$has_kaigo && $global_count == 0){
-                    $check_offset = $first_page_offset;
-                }else{
-                    $check_offset = $newpage_offset2;
-                }
+                $check_offset = $newpage_offset2;
                 if($row_count >= $check_offset){
                     $row_count = 0;
-                    $global_count++;
                     #echo "ここでglobalcount繰り上がり2";
                     $tmp = "<div style='page-break-before: always;'></div>";
 
                     $iryo_p2_count++;
-                    $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>{$tmp}<div id=\"iryo-meisai-table\"><table class='disp_table'><tr><th colspan=5 class='border_rb'>{$iryo_p2_count} 医療保険</th></tr><tr>
-                    <th class=\"category-col border_b\">部</th>
-                    <th class=\"border_b\">項目</th>
-                    <th class=\"tensu-col border_b\">点数</th>
-                    <th class=\"x-col border_b\"></th>
-                    <th class=\"kaisu-col border_rb\">回数</th></tr>";
+                    $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>{$tmp}".$iryo_block_head;
                     #保険種別（1行）とヘッダ行（1行）をカウント
                     $row_count += 2;
                 }
@@ -1302,33 +1280,23 @@ class CLSYSTEM{
 
             $row_count++;
 
-            #介護保険明細がない場合は1ページ目は22行で分割
-            if(!$has_kaigo && $global_count == 0){
-                $check_offset = $first_page_offset;
-            }else{
-                $check_offset = $newpage_offset2;
-            }
+            $check_offset = $newpage_offset2;
             #echo $row_count ."---".$check_offset."<br>\n";
             if($row_count >= $check_offset){
                 $row_count = 0;
-                $global_count++;
                 #echo "ここでglobalcount繰り上がり3";
                 $tmp = "<div style='page-break-before: always;'></div>";
 
                 $iryo_p2_count++;
-                $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>{$tmp}<div id=\"iryo-meisai-table\"><table class='disp_table'><tr><th colspan=5 class='border_rb'>医療保険</th></tr><tr>
-                <th class=\"category-col border_b\">部</th>
-                <th class=\"border_b\">項目</th>
-                <th class=\"tensu-col border_b\">点数</th>
-                <th class=\"x-col border_b\"></th>
-                <th class=\"kaisu-col border_rb\">回数</th></tr>";
+                $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>{$tmp}".$iryo_block_head;
                 #保険種別（1行）とヘッダ行（1行）をカウント
                 $row_count += 2;
             }
         }#foreach内側
     }#foreach外側
 
-        $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>";
+            $html .= "<tr><td colspan=5 class='border_rb'></td></tr></table></div>";
+            }
 
         #clearfix
         $html .= "<div class=\"clearfix\"></div>";
@@ -1571,6 +1539,11 @@ margin: 0px auto 30px auto;
 text-align:center;
 border-bottom:3px solid #262626;
 }
+.meisai-section-gap{
+margin-top:14px;
+height:0;
+clear:both;
+}
 
 #iryo-meisai-table{
 width:100%;
@@ -1578,7 +1551,7 @@ padding-right:0px;
 }
 #iryo-meisai-table table{
 width:100%;
-page-break-inside: avoid;
+page-break-inside: auto;
 }
 .non-border{
 border:none;
@@ -2100,6 +2073,11 @@ if(isset($_REQUEST['testview'])){
                 margin: 50px auto 30px auto;
                 text-align:center;
                 border-bottom:3px solid #262626;
+            }
+            .meisai-section-gap{
+                margin-top:14px;
+                height:0;
+                clear:both;
             }
 
             #iryo-meisai-table{
