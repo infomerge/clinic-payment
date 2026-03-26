@@ -146,6 +146,19 @@ if(isset($_POST['submit'])){
                 $original_pid = $kaigo_data['original_pid'];
                 $pid = $kaigo_data['pid'];
 
+                # clsystem の $kaigo_value['rate'] と同じ基準（公費率があればそちら、なければ保険給付率）で比較し、負担表示に効く率が変われば rek_patient を更新
+                $sql = "SELECT hoken_rate, kouhi_rate FROM rek_patient WHERE pid = '{$pid}' AND delete_flag = 0 LIMIT 1";
+                $stmt = $dbh->query($sql);
+                $rp_row = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($rp_row) {
+                    $kaigo_rate_db = ($rp_row['kouhi_rate'] != 0) ? $rp_row['kouhi_rate'] : $rp_row['hoken_rate'];
+                    $kaigo_rate_in = ($rek_patient['kouhi_rate'] != 0) ? $rek_patient['kouhi_rate'] : $rek_patient['hoken_rate'];
+                    if ((int)$kaigo_rate_in != (int)$kaigo_rate_db) {
+                        $sql = "UPDATE rek_patient SET hoken_rate = '{$rek_patient['hoken_rate']}', kouhi_rate = '{$rek_patient['kouhi_rate']}', totalcopayment = '{$rek_patient['totalcopayment']}' WHERE pid = '{$pid}' AND delete_flag = 0";
+                        $dbh->query($sql);
+                    }
+                }
+
                 #ループ上、srmの値が異なる場合
                 foreach($kaigo_data['rek_service'] as $rek_service):
                     $sql = "SELECT * FROM rek_service INNER JOIN rek_patient ON rek_service.pid = rek_patient.pid WHERE 
