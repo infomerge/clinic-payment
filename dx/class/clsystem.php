@@ -35,6 +35,20 @@ class CLSYSTEM{
         $this->db->disconnect();
     }
 
+    # getKaisyuData 等：JOIN 後のフラット行から登録氏名のみ（送付先は含めない）。resolveRegisteredPatientName と同順序。
+    function resolveRegisteredPatientNameFromFlatRow($row){
+        if(!is_array($row)){
+            return '';
+        }
+        if(isset($row['name']) && trim((string)$row['name']) !== ''){
+            return trim((string)$row['name']);
+        }
+        if(isset($row['patient_name']) && trim((string)$row['patient_name']) !== ''){
+            return trim((string)$row['patient_name']);
+        }
+        return '';
+    }
+
     function getPaymentData(){
         
 
@@ -1627,8 +1641,15 @@ EOD;
 
             $stmt = $this->db->databasequery($sql);
             $tmp_acc_data = $stmt->fetchALL(PDO::FETCH_ASSOC);
-        
+
+            $data['acc_data_total'] = array();
+            $data['monthly_copayment'] = array();
+
             foreach($tmp_acc_data as $v){
+                # 登録氏名が空の行は回収明細に含めない（介護のみレセプト等）。件数・合計も対象行のみで整合させる。
+                if($this->resolveRegisteredPatientNameFromFlatRow($v) === ''){
+                    continue;
+                }
                 $data['acc_data_total'][$v['original_irkkcode']][] = $v;
 
                 #合計金額の計算：未回収は含めない

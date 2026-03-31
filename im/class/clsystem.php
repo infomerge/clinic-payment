@@ -35,6 +35,89 @@ class CLSYSTEM{
         $this->db->disconnect();
     }
 
+    # patient_info 由来などで name が無く patient_name のみある場合に name を補う。常に data['name'] を文字列で定義（PHP8 Undefined array key 防止）
+    function syncDataNameFromPatientName(&$dataRow){
+        if(!is_array($dataRow)){
+            return;
+        }
+        $nameTrim = array_key_exists('name', $dataRow) ? trim((string)$dataRow['name']) : '';
+        if($nameTrim !== ''){
+            $dataRow['name'] = $nameTrim;
+            return;
+        }
+        if(isset($dataRow['patient_name']) && trim((string)$dataRow['patient_name']) !== ''){
+            $dataRow['name'] = $dataRow['patient_name'];
+            return;
+        }
+        $dataRow['name'] = '';
+    }
+
+    # 請求書・一覧表示用：送付先名 > name > patient_name
+    function resolvePatientDisplayName($patient_data){
+        if(!isset($patient_data['data']) || !is_array($patient_data['data'])){
+            return '';
+        }
+        $d = $patient_data['data'];
+        foreach(array('shipto_name', 'name', 'patient_name') as $k){
+            if(isset($d[$k]) && trim((string)$d[$k]) !== ''){
+                return trim((string)$d[$k]);
+            }
+        }
+        return '';
+    }
+
+    # 患者本人の登録氏名のみ（送付先 shipto_name は含めない）。介護のみレセプト等で未登録の場合は空。
+    function resolveRegisteredPatientName($patient_data){
+        if(!isset($patient_data['data']) || !is_array($patient_data['data'])){
+            return '';
+        }
+        $d = $patient_data['data'];
+        if(isset($d['name']) && trim((string)$d['name']) !== ''){
+            return trim((string)$d['name']);
+        }
+        if(isset($d['patient_name']) && trim((string)$d['patient_name']) !== ''){
+            return trim((string)$d['patient_name']);
+        }
+        return '';
+    }
+
+    # getKaisyuData 等：JOIN 後のフラット行から登録氏名のみ（送付先は含めない）。resolveRegisteredPatientName と同順序。
+    function resolveRegisteredPatientNameFromFlatRow($row){
+        if(!is_array($row)){
+            return '';
+        }
+        if(isset($row['name']) && trim((string)$row['name']) !== ''){
+            return trim((string)$row['name']);
+        }
+        if(isset($row['patient_name']) && trim((string)$row['patient_name']) !== ''){
+            return trim((string)$row['patient_name']);
+        }
+        return '';
+    }
+
+    function dropPaymentDataWithoutRegisteredPatientName(&$data){
+        if(!is_array($data)){
+            return;
+        }
+        foreach($data as $original_pid => $patient_data){
+            if($this->resolveRegisteredPatientName($patient_data) === ''){
+                unset($data[$original_pid]);
+            }
+        }
+    }
+
+    function enrichPaymentDataPatientNames(&$data){
+        if(!is_array($data)){
+            return;
+        }
+        foreach($data as $original_pid => $patient_data){
+            if(!isset($patient_data['data']) || !is_array($patient_data['data'])){
+                continue;
+            }
+            $this->syncDataNameFromPatientName($data[$original_pid]['data']);
+        }
+    }
+
     function getPaymentData(){
         
 
@@ -87,6 +170,9 @@ class CLSYSTEM{
                     $acc_detail_data[$v['original_pid']] = unserialize($v['contents']);
                 endforeach;
             endif;
+
+            $this->enrichPaymentDataPatientNames($acc_detail_data);
+            $this->dropPaymentDataWithoutRegisteredPatientName($acc_detail_data);
 
             return $acc_detail_data;
         
@@ -579,14 +665,17 @@ class CLSYSTEM{
                     continue;
                 }
 
+                $this->syncDataNameFromPatientName($data[$original_pid]['data']);
 
                 $name_flag = false;
                 if(isset($patient_data['data']['shipto_name']) && $patient_data['data']['shipto_name'] != ""){
                     $name_flag = true;
                 }elseif( isset($patient_data['data']['name']) && $patient_data['data']['name'] != ""){
                     $name_flag = true;
+                }elseif( isset($patient_data['data']['patient_name']) && $patient_data['data']['patient_name'] != ""){
+                    $name_flag = true;
                 }else{
-                    #echo "---shipto_name:".$patient_data['data']['shipto_name']."---name:".$patient_data['data']['name'];exit;
+                    # 氏名デバッグは resolveRegisteredPatientName を使うこと（['name'] 直接参照しない）
                 }
 
                 #請求番号
@@ -638,14 +727,14 @@ class CLSYSTEM{
 
                 #支払総額が「0」の場合はスキップ
                 if($total_copayment == 0){
-                #  echo $original_pid."---".$patient_data['data']['name']."は支払金額0のためスルー\n";
+                #  echo $original_pid."---(patient name)---は支払金額0のためスルー\n";
                 #continue;
                 } 
                 
                 $data[$original_pid]['total_copayment'] = $total_copayment;
                 $data[$original_pid]['ichibufutankin'] = $ichibufutankin;
 
-                #echo $original_pid."---".$patient_data['data']['name']."---".$total_copayment."---".$patient_data['data']['direct_debit']."<br>\n";
+                #echo $original_pid."---".$data[$original_pid]['data']['name']."---".$total_copayment."---".(isset($patient_data['data']['direct_debit'])?$patient_data['data']['direct_debit']:'')."<br>\n";
 
 
                 $total_tensu = 0;
@@ -661,6 +750,9 @@ class CLSYSTEM{
             #$this->db->databasequery($sql);exit;
             #echo $sql;exit;
             #print_r($data[392]);exit;
+
+            $this->enrichPaymentDataPatientNames($data);
+            $this->dropPaymentDataWithoutRegisteredPatientName($data);
 
             return $data;
         
@@ -714,9 +806,15 @@ class CLSYSTEM{
     }
 
     function generateRPdata(){
+        # デプロイ確認用: サーバにこのブロックが無い場合は旧 echo のまま（line 付近で ['name'] Warning）
         $data = $this->getPaymentData();
         #print_r($data);exit;
         foreach($data as $original_pid => $patient_data):
+            $registeredName = $this->resolveRegisteredPatientName($patient_data);
+            if($registeredName === ''){
+                error_log('im generateRPdata: skip original_pid without registered patient name (name/patient_name): '.$original_pid);
+                continue;
+            }
             $tmp_rand = uniqid();
             #内科の場合は先頭に「im-」をつける
             $inv_id = "im-".$patient_data['data']['irkkcode'] . "-" . sprintf('%07d', strval($original_pid)) . "-" . $this->targetym ."-".$tmp_rand;
@@ -724,7 +822,7 @@ class CLSYSTEM{
                     VALUES (0,0,0,0,0,'$inv_id','{$patient_data['total_copayment']}',0,0,0,'','','$original_pid',0,'{$this->targetym}',null,'{$patient_data['data']['direct_debit']}',0,'',0);";
             #echo $sql."\n";
             $this->db->databasequery($sql);
-            echo $original_pid."\t".$patient_data['data']['name']."\t".$patient_data['total_copayment']."\n";
+            echo $original_pid."\t".$registeredName."\t".$patient_data['total_copayment']."\n";
 
             #220327
             #idを取得
@@ -732,6 +830,7 @@ class CLSYSTEM{
             $stmt = $this->db->databasequery($sql);
             $result = $stmt->fetch();
 
+            $this->syncDataNameFromPatientName($patient_data['data']);
             $contents = serialize($patient_data);
             $sql = "INSERT INTO acc_detail (rid,original_pid,contents) VALUES ('{$result['LAST_INSERT_ID()']}','{$original_pid}','{$contents}');";
             $this->db->databasequery($sql);
@@ -819,13 +918,18 @@ class CLSYSTEM{
     function generateRPdataDEBUG($data){
         
         foreach($data as $original_pid => $patient_data):
+            $registeredName = $this->resolveRegisteredPatientName($patient_data);
+            if($registeredName === ''){
+                error_log('im generateRPdataDEBUG: skip original_pid without registered patient name (name/patient_name): '.$original_pid);
+                continue;
+            }
             $tmp_rand = uniqid();
             $inv_id = $patient_data['data']['irkkcode'] . "-" . sprintf('%07d', strval($original_pid)) . "-" . $this->targetym ."-".$tmp_rand;
             $sql = "INSERT INTO acc_result (gid,rst,ap,ec,god,cod,am,tx,sf,ta,em,nm,original_pid,srm,targetym,reqid,rp_disableflag,rp_errorflag,rp_errormsg,carryforward_flag)
                     VALUES (0,0,0,0,0,'$inv_id','{$patient_data['total_copayment']}',0,0,0,'','','$original_pid',0,'{$this->targetym}',null,'{$patient_data['data']['direct_debit']}',0,'',0);";
             #echo $sql."\n";
             $this->db->databasequery($sql);
-            echo $original_pid."\t".$patient_data['data']['name']."\t".$patient_data['total_copayment']."\n";
+            echo $original_pid."\t".$registeredName."\t".$patient_data['total_copayment']."\n";
 
             #220327
             #idを取得
@@ -833,6 +937,7 @@ class CLSYSTEM{
             $stmt = $this->db->databasequery($sql);
             $result = $stmt->fetch();
 
+            $this->syncDataNameFromPatientName($patient_data['data']);
             $contents = serialize($patient_data);
             $sql = "INSERT INTO acc_detail (rid,original_pid,contents) VALUES ('{$result['LAST_INSERT_ID()']}','{$original_pid}','{$contents}');";
             $this->db->databasequery($sql);
@@ -912,6 +1017,8 @@ class CLSYSTEM{
         #print_r($m_category);
         #print_r($data);exit;
         foreach ($data as $original_pid => $patient_data) {
+            # getPaymentData() 側で氏名未登録は除外済み（dropPaymentDataWithoutRegisteredPatientName）
+
             // if(isset($patient_data['srm'])):
             //     echo $original_pid."---介護データあり";
             // else:
@@ -930,8 +1037,10 @@ class CLSYSTEM{
               $name_flag = true;
             }elseif( isset($patient_data['data']['name']) && $patient_data['data']['name'] != ""){
               $name_flag = true;
+            }elseif( isset($patient_data['data']['patient_name']) && $patient_data['data']['patient_name'] != ""){
+              $name_flag = true;
             }else{
-              #echo "---shipto_name:".$patient_data['data']['shipto_name']."---name:".$patient_data['data']['name'];exit;
+              # 氏名デバッグは resolveRegisteredPatientName を使うこと
             }
 
             #請求番号
@@ -959,9 +1068,15 @@ class CLSYSTEM{
             if(isset($patient_data['data']['shipto_name']) && $patient_data['data']['shipto_name']){
                 $shipto_name = isset($patient_data['data']['shipto_name']) ? $patient_data['data']['shipto_name'] : '';
                 $name = isset($patient_data['data']['name']) ? $patient_data['data']['name'] : '';
+                if($name === '' && isset($patient_data['data']['patient_name'])){
+                    $name = $patient_data['data']['patient_name'];
+                }
                 $html .= "<p class=\"patient-name\">".$shipto_name." 様<br><span class=\"patient-name-sub\">（".$name." 様分）</span></p>";
             } else {
                 $name = isset($patient_data['data']['name']) ? $patient_data['data']['name'] : '';
+                if($name === '' && isset($patient_data['data']['patient_name'])){
+                    $name = $patient_data['data']['patient_name'];
+                }
                 $html .= "<p class=\"patient-name\">".$name." 様</p>";
             }
 
@@ -1678,8 +1793,15 @@ EOD;
 
             $stmt = $this->db->databasequery($sql);
             $tmp_acc_data = $stmt->fetchALL(PDO::FETCH_ASSOC);
-        
+
+            $data['acc_data_total'] = array();
+            $data['monthly_copayment'] = array();
+
             foreach($tmp_acc_data as $v){
+                # 登録氏名が空の行は回収明細に含めない（介護のみレセプト等）。件数・合計も対象行のみで整合させる。
+                if($this->resolveRegisteredPatientNameFromFlatRow($v) === ''){
+                    continue;
+                }
                 $data['acc_data_total'][$v['original_irkkcode']][] = $v;
 
                 #合計金額の計算：未回収は含めない
@@ -2454,13 +2576,18 @@ if(isset($_REQUEST['testview'])){
                 echo "対象なし";
 
                 foreach($data as $original_pid => $patient_data):
+                    $registeredName = $this->resolveRegisteredPatientName($patient_data);
+                    if($registeredName === ''){
+                        error_log('im irregularAdjust: skip original_pid without registered patient name (name/patient_name): '.$original_pid);
+                        continue;
+                    }
                     $tmp_rand = uniqid();
                     $inv_id = $patient_data['data']['irkkcode'] . "-" . sprintf('%07d', strval($original_pid)) . "-" . $this->targetym ."-".$tmp_rand;
                     $sql = "INSERT INTO acc_result (gid,rst,ap,ec,god,cod,am,tx,sf,ta,em,nm,original_pid,srm,targetym,reqid,rp_disableflag,rp_errorflag,rp_errormsg,carryforward_flag)
                             VALUES (0,0,0,0,0,'$inv_id','{$patient_data['total_copayment']}',0,0,0,'','','$original_pid',0,'{$this->targetym}',null,'{$patient_data['data']['direct_debit']}',0,'',0);";
                     echo $sql."\n";
                     $this->db->databasequery($sql);
-                    echo $original_pid."\t".$patient_data['data']['name']."\t".$patient_data['total_copayment']."\n";
+                    echo $original_pid."\t".$registeredName."\t".$patient_data['total_copayment']."\n";
         
                     #220327
                     #idを取得
@@ -2468,6 +2595,7 @@ if(isset($_REQUEST['testview'])){
                     $stmt = $this->db->databasequery($sql);
                     $result = $stmt->fetch();
         
+                    $this->syncDataNameFromPatientName($patient_data['data']);
                     $contents = serialize($patient_data);
                     $sql = "INSERT INTO acc_detail (rid,original_pid,contents) VALUES ('{$result['LAST_INSERT_ID()']}','{$original_pid}','{$contents}');";
                     $this->db->databasequery($sql);
