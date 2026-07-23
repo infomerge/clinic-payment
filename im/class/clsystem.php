@@ -1010,6 +1010,9 @@ class CLSYSTEM{
         // $mpdf->Output();exit;
         $data = $this->getPaymentData();
         #print_r($data);exit;
+        # output=html の場合は、PDF化直前の患者ごとのHTML本文をレスポンスとして返す
+        $output_html = isset($_GET['output']) && $_GET['output'] === "html";
+        $html_output = "";
         
         
         #個人毎PDFデータ生成
@@ -1044,7 +1047,11 @@ class CLSYSTEM{
             }
 
             #請求番号
-            $srm = isset($srm) ? $srm : "";     #im用に追加
+            if($this->manageperiod_flag == 1){
+                $srm = $this->targetym;
+            }else{
+                $srm = mb_substr($this->srd_start, 0, 6);
+            }
             $inv_id = (isset($patient_data['data']['irkkcode']) ? $patient_data['data']['irkkcode'] : '') . "-" . $srm . "-" . sprintf('%07d', strval($original_pid));
 
             ### ---------- 封筒窓 ---------- ###
@@ -1742,6 +1749,13 @@ EOD;
                 #$html .= "</body></html>";
             
             #$mpdf->WriteHTML($html);
+            if($output_html){
+                $html_output .= "<!-- patient original_pid=".$original_pid." begin -->\n";
+                $html_output .= $html."\n";
+                $html_output .= "<!-- patient original_pid=".$original_pid." end -->\n";
+                $cnt++;
+                continue;
+            }
             $mpdf->WriteHTML($css, \Mpdf\HTMLParserMode::HEADER_CSS);
             $mpdf->WriteHTML($html, \Mpdf\HTMLParserMode::HTML_BODY);
 
@@ -1767,6 +1781,15 @@ EOD;
         #echo $html;exit;
         }
         #echo $html;exit;
+        if($output_html){
+            if(!headers_sent()){
+                header("Content-Type: text/html; charset=UTF-8");
+            }
+            echo "<!DOCTYPE html>\n<html><head><meta charset=\"UTF-8\"><title>Invoice HTML</title></head><body>\n";
+            echo $html_output;
+            echo "</body></html>\n";
+            return;
+        }
         if($this->pdf_path != ""):
             #$mpdf->Output( dirname(dirname(__FILE__)) . "/downloadpdf/202203_seikyu.pdf","F");
             $mpdf->Output( $this->pdf_path , "F");

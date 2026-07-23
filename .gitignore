@@ -50,3 +50,5 @@ imdev/vendor/
 
 # その他、OSが生成する不要ファイル
 .DS_Store
+
+**/docs/*
