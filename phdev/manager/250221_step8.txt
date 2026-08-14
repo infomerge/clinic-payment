@@ -1,0 +1,1983 @@
+Array
+(
+    [0] => Array
+        (
+            [rid] => 3089
+            [gid] => 0
+            [rst] => 0
+            [ap] => 0
+            [ec] => 0
+            [god] => 0
+            [cod] => 4841094-0000452-202501-6796f9e7ac24d
+            [am] => 0
+            [tx] => 0
+            [sf] => 0
+            [ta] => 0
+            [em] => 
+            [nm] => 
+            [original_pid] => 452
+            [srm] => 0
+            [targetym] => 202501
+            [reqid] => 
+            [rp_disableflag] => 1
+            [rp_errorflag] => 0
+            [rp_errormsg] => 
+            [carryforward_flag] => 0
+            [date] => 2025-01-27 12:13:43
+        )
+
+    [1] => Array
+        (
+            [rid] => 3096
+            [gid] => 0
+            [rst] => 0
+            [ap] => 0
+            [ec] => 0
+            [god] => 0
+            [cod] => 4841094-0000223-202501-6796f9e7ace77
+            [am] => 0
+            [tx] => 0
+            [sf] => 0
+            [ta] => 0
+            [em] => 
+            [nm] => 
+            [original_pid] => 223
+            [srm] => 0
+            [targetym] => 202501
+            [reqid] => 
+            [rp_disableflag] => 1
+            [rp_errorflag] => 0
+            [rp_errormsg] => 
+            [carryforward_flag] => 0
+            [date] => 2025-01-27 12:13:43
+        )
+
+    [2] => Array
+        (
+            [rid] => 3097
+            [gid] => 0
+            [rst] => 0
+            [ap] => 0
+            [ec] => 0
+            [god] => 0
+            [cod] => 4841094-0000299-202501-6796f9e7ad14e
+            [am] => 0
+            [tx] => 0
+            [sf] => 0
+            [ta] => 0
+            [em] => 
+            [nm] => 
+            [original_pid] => 299
+            [srm] => 0
+            [targetym] => 202501
+            [reqid] => 
+            [rp_disableflag] => 1
+            [rp_errorflag] => 0
+            [rp_errormsg] => 
+            [carryforward_flag] => 0
+            [date] => 2025-01-27 12:13:43
+        )
+
+)
+UPDATE acc_result SET rp_errorflag = 9 WHERE rid = '3089';  を実行します... 完了
+UPDATE acc_result SET rp_errorflag = 9 WHERE rid = '3096';  を実行します... 完了
+UPDATE acc_result SET rp_errorflag = 9 WHERE rid = '3097';  を実行します... 完了
+次の行程：202501 rp_errorflag != 9 carryforward_flag = 0 の検索
+SELECT a.* FROM acc_result as a , patient_info as b WHERE a.original_pid = b.original_pid AND a.targetym = '202501' AND a.rp_errorflag != 9 AND a.carryforward_flag = 0 AND b.disp = 0
+Array
+(
+    [0] => Array
+        (
+            [rid] => 3080
+            [gid] => 99096658
+            [rst] => 2
+            [ap] => ACC
+            [ec] => J005
+            [god] => 0
+            [cod] => 4841094-0000609-202501-6796f9e7aaefa
+            [am] => 540
+            [tx] => 0
+            [sf] => 0
+            [ta] => 540
+            [em] => 
+            [nm] => 
+            [original_pid] => 609
+            [srm] => 0
+            [targetym] => 202501
+            [reqid] => 3662492
+            [rp_disableflag] => 0
+            [rp_errorflag] => 1
+            [rp_errormsg] => 
+            [carryforward_flag] => 0
+            [date] => 2025-01-27 12:13:43
+        )
+
+    [1] => Array
+        (
+            [rid] => 3081
+            [gid] => 99096664
+            [rst] => 2
+            [ap] => ACC
+            [ec] => J005
+            [god] => 0
+            [cod] => 4841094-0000610-202501-6796f9e7ab16f
+            [am] => 3210
+            [tx] => 0
+            [sf] => 0
+            [ta] => 3210
+            [em] => 
+            [nm] => 
+            [original_pid] => 610
+            [srm] => 0
+            [targetym] => 202501
+            [reqid] => 3662493
+            [rp_disableflag] => 0
+            [rp_errorflag] => 1
+            [rp_errormsg] => 
+            [carryforward_flag] => 0
+            [date] => 2025-01-27 12:13:43
+        )
+
+    [2] => Array
+        (
+            [rid] => 3094
+            [gid] => 0
+            [rst] => 0
+            [ap] => 0
+            [ec] => 0
+            [god] => 0
+            [cod] => 4841094-0000495-202501-6796f9e7acaf1
+            [am] => 2670
+            [tx] => 0
+            [sf] => 0
+            [ta] => 0
+            [em] => 
+            [nm] => 
+            [original_pid] => 495
+            [srm] => 0
+            [targetym] => 202501
+            [reqid] => 
+            [rp_disableflag] => 1
+            [rp_errorflag] => 0
+            [rp_errormsg] => 
+            [carryforward_flag] => 0
+            [date] => 2025-01-27 12:13:43
+        )
+
+    [3] => Array
+        (
+            [rid] => 3105
+            [gid] => 99096631
+            [rst] => 2
+            [ap] => ACC
+            [ec] => J002
+            [god] => 0
+            [cod] => 1930331-0000349-202501-6796f9e7ae140
+            [am] => 2509
+            [tx] => 0
+            [sf] => 0
+            [ta] => 2509
+            [em] => 
+            [nm] => 
+            [original_pid] => 349
+            [srm] => 0
+            [targetym] => 202501
+            [reqid] => 3662513
+            [rp_disableflag] => 0
+            [rp_errorflag] => 1
+            [rp_errormsg] => 
+            [carryforward_flag] => 0
+            [date] => 2025-01-27 12:13:43
+        )
+
+    [4] => Array
+        (
+            [rid] => 3119
+            [gid] => 99096667
+            [rst] => 2
+            [ap] => ACC
+            [ec] => J005
+            [god] => 0
+            [cod] => 7210311-0000621-202501-6796f9e7afcb3
+            [am] => 4360
+            [tx] => 0
+            [sf] => 0
+            [ta] => 4360
+            [em] => 
+            [nm] => 
+            [original_pid] => 621
+            [srm] => 0
+            [targetym] => 202501
+            [reqid] => 3662527
+            [rp_disableflag] => 0
+            [rp_errorflag] => 1
+            [rp_errormsg] => 
+            [carryforward_flag] => 0
+            [date] => 2025-01-27 12:13:43
+        )
+
+    [5] => Array
+        (
+            [rid] => 3122
+            [gid] => 99096665
+            [rst] => 2
+            [ap] => ACC
+            [ec] => J005
+            [god] => 0
+            [cod] => 7210311-0000622-202501-6796f9e7b027d
+            [am] => 3970
+            [tx] => 0
+            [sf] => 0
+            [ta] => 3970
+            [em] => 
+            [nm] => 
+            [original_pid] => 622
+            [srm] => 0
+            [targetym] => 202501
+            [reqid] => 3662530
+            [rp_disableflag] => 0
+            [rp_errorflag] => 1
+            [rp_errormsg] => 
+            [carryforward_flag] => 0
+            [date] => 2025-01-27 12:13:43
+        )
+
+    [6] => Array
+        (
+            [rid] => 3123
+            [gid] => 99096666
+            [rst] => 2
+            [ap] => ACC
+            [ec] => J005
+            [god] => 0
+            [cod] => 7210311-0000623-202501-6796f9e7b03ba
+            [am] => 2820
+            [tx] => 0
+            [sf] => 0
+            [ta] => 2820
+            [em] => 
+            [nm] => 
+            [original_pid] => 623
+            [srm] => 0
+            [targetym] => 202501
+            [reqid] => 3662531
+            [rp_disableflag] => 0
+            [rp_errorflag] => 1
+            [rp_errormsg] => 
+            [carryforward_flag] => 0
+            [date] => 2025-01-27 12:13:43
+        )
+
+    [7] => Array
+        (
+            [rid] => 3126
+            [gid] => 99096668
+            [rst] => 2
+            [ap] => ACC
+            [ec] => J005
+            [god] => 0
+            [cod] => 7210311-0000624-202501-6796f9e7b093d
+            [am] => 1280
+            [tx] => 0
+            [sf] => 0
+            [ta] => 1280
+            [em] => 
+            [nm] => 
+            [original_pid] => 624
+            [srm] => 0
+            [targetym] => 202501
+            [reqid] => 3662534
+            [rp_disableflag] => 0
+            [rp_errorflag] => 1
+            [rp_errormsg] => 
+            [carryforward_flag] => 0
+            [date] => 2025-01-27 12:13:43
+        )
+
+)
+SELECT * FROM re_shinryo WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                    AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '609' ;
+Array
+(
+    [0] => Array
+        (
+            [sid] => 23287
+            [original_irkkcode] => 1096
+            [original_pid] => 609
+            [pid] => 4030
+            [srd] => 20241112
+            [shikibetsu] => 80
+            [koui] => 303012810
+            [category] => C
+            [shinryo_name] => 訪問診療３（診療所）
+            [tensu] => 310
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 310
+            [rp_reqid] => 3662492
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [1] => Array
+        (
+            [sid] => 23288
+            [original_irkkcode] => 1096
+            [original_pid] => 609
+            [pid] => 4030
+            [srd] => 20241112
+            [shikibetsu] => 80
+            [koui] => 303003310
+            [category] => C
+            [shinryo_name] => 歯在管（歯援診２）
+            [tensu] => 230
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 230
+            [rp_reqid] => 3662492
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+)
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23287;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23288;
+SELECT * FROM rek_service WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '609' ;
+Array
+(
+)
+SELECT * FROM appendix WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '609' ;
+Array
+(
+)
+UPDATE acc_result SET rp_errorflag = 1 ,carryforward_flag = 1 WHERE rid = '3080' ;
+SELECT * FROM re_shinryo WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                    AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '610' ;
+Array
+(
+    [0] => Array
+        (
+            [sid] => 23289
+            [original_irkkcode] => 1096
+            [original_pid] => 610
+            [pid] => 4031
+            [srd] => 20241126
+            [shikibetsu] => 80
+            [koui] => 303012810
+            [category] => C
+            [shinryo_name] => 訪問診療３（診療所）
+            [tensu] => 310
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 310
+            [rp_reqid] => 3662493
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [1] => Array
+        (
+            [sid] => 23290
+            [original_irkkcode] => 1096
+            [original_pid] => 610
+            [pid] => 4031
+            [srd] => 20241126
+            [shikibetsu] => 80
+            [koui] => 303003310
+            [category] => C
+            [shinryo_name] => 歯在管（歯援診２）
+            [tensu] => 230
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 230
+            [rp_reqid] => 3662493
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [2] => Array
+        (
+            [sid] => 23593
+            [original_irkkcode] => 1096
+            [original_pid] => 610
+            [pid] => 4031
+            [srd] => 20241203
+            [shikibetsu] => 80
+            [koui] => 303012810
+            [category] => C
+            [shinryo_name] => 訪問診療３（診療所）
+            [tensu] => 310
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 310
+            [rp_reqid] => 3662493
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [3] => Array
+        (
+            [sid] => 23594
+            [original_irkkcode] => 1096
+            [original_pid] => 610
+            [pid] => 4031
+            [srd] => 20241210
+            [shikibetsu] => 80
+            [koui] => 303012810
+            [category] => C
+            [shinryo_name] => 訪問診療３（診療所）
+            [tensu] => 310
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 310
+            [rp_reqid] => 3662493
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [4] => Array
+        (
+            [sid] => 23595
+            [original_irkkcode] => 1096
+            [original_pid] => 610
+            [pid] => 4031
+            [srd] => 20241217
+            [shikibetsu] => 80
+            [koui] => 303012810
+            [category] => C
+            [shinryo_name] => 訪問診療３（診療所）
+            [tensu] => 310
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 310
+            [rp_reqid] => 3662493
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [5] => Array
+        (
+            [sid] => 23596
+            [original_irkkcode] => 1096
+            [original_pid] => 610
+            [pid] => 4031
+            [srd] => 20241224
+            [shikibetsu] => 80
+            [koui] => 303012810
+            [category] => C
+            [shinryo_name] => 訪問診療３（診療所）
+            [tensu] => 310
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 310
+            [rp_reqid] => 3662493
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [6] => Array
+        (
+            [sid] => 23597
+            [original_irkkcode] => 1096
+            [original_pid] => 610
+            [pid] => 4031
+            [srd] => 20241203
+            [shikibetsu] => 80
+            [koui] => 303007510
+            [category] => C
+            [shinryo_name] => 訪衛指（１及び２以外）
+            [tensu] => 295
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 295
+            [rp_reqid] => 3662493
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [7] => Array
+        (
+            [sid] => 23598
+            [original_irkkcode] => 1096
+            [original_pid] => 610
+            [pid] => 4031
+            [srd] => 20241210
+            [shikibetsu] => 80
+            [koui] => 303007510
+            [category] => C
+            [shinryo_name] => 訪衛指（１及び２以外）
+            [tensu] => 295
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 295
+            [rp_reqid] => 3662493
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [8] => Array
+        (
+            [sid] => 23599
+            [original_irkkcode] => 1096
+            [original_pid] => 610
+            [pid] => 4031
+            [srd] => 20241217
+            [shikibetsu] => 80
+            [koui] => 303007510
+            [category] => C
+            [shinryo_name] => 訪衛指（１及び２以外）
+            [tensu] => 295
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 295
+            [rp_reqid] => 3662493
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [9] => Array
+        (
+            [sid] => 23600
+            [original_irkkcode] => 1096
+            [original_pid] => 610
+            [pid] => 4031
+            [srd] => 20241224
+            [shikibetsu] => 80
+            [koui] => 303007510
+            [category] => C
+            [shinryo_name] => 訪衛指（１及び２以外）
+            [tensu] => 295
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 295
+            [rp_reqid] => 3662493
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [10] => Array
+        (
+            [sid] => 23601
+            [original_irkkcode] => 1096
+            [original_pid] => 610
+            [pid] => 4031
+            [srd] => 20241203
+            [shikibetsu] => 80
+            [koui] => 303003310
+            [category] => C
+            [shinryo_name] => 歯在管（歯援診２）
+            [tensu] => 230
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 230
+            [rp_reqid] => 3662493
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+)
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23289;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23290;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23593;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23594;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23595;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23596;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23597;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23598;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23599;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23600;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23601;
+SELECT * FROM rek_service WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '610' ;
+Array
+(
+)
+SELECT * FROM appendix WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '610' ;
+Array
+(
+)
+UPDATE acc_result SET rp_errorflag = 1 ,carryforward_flag = 1 WHERE rid = '3081' ;
+SELECT * FROM re_shinryo WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                    AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '495' ;
+Array
+(
+)
+SELECT * FROM rek_service WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '495' ;
+Array
+(
+)
+SELECT * FROM appendix WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '495' ;
+Array
+(
+)
+UPDATE acc_result SET rp_errorflag = 1 ,carryforward_flag = 1 WHERE rid = '3094' ;
+SELECT * FROM re_shinryo WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                    AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '349' ;
+Array
+(
+    [0] => Array
+        (
+            [sid] => 23651
+            [original_irkkcode] => 1097
+            [original_pid] => 349
+            [pid] => 2278
+            [srd] => 20241224
+            [shikibetsu] => 13
+            [koui] => 308002510
+            [category] => H
+            [shinryo_name] => 歯科口腔リハビリテーション料１（有床義歯のロ以外）
+            [tensu] => 104
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 104
+            [rp_reqid] => 3662513
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [1] => Array
+        (
+            [sid] => 23652
+            [original_irkkcode] => 1097
+            [original_pid] => 349
+            [pid] => 2278
+            [srd] => 20241224
+            [shikibetsu] => 31
+            [koui] => 304000510
+            [category] => D
+            [shinryo_name] => Ｐ基検（１０歯以上２０歯未満）
+            [tensu] => 55
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 55
+            [rp_reqid] => 3662513
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [2] => Array
+        (
+            [sid] => 23653
+            [original_irkkcode] => 1097
+            [original_pid] => 349
+            [pid] => 2278
+            [srd] => 20241224
+            [shikibetsu] => 41
+            [koui] => 309014810
+            [category] => I
+            [shinryo_name] => ＳＰＴ（１０歯以上２０歯未満）
+            [tensu] => 370
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 370
+            [rp_reqid] => 3662513
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [3] => Array
+        (
+            [sid] => 23654
+            [original_irkkcode] => 1097
+            [original_pid] => 349
+            [pid] => 2278
+            [srd] => 20241224
+            [shikibetsu] => 80
+            [koui] => 303000110
+            [category] => C
+            [shinryo_name] => 訪問診療１（診療所）
+            [tensu] => 1100
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 1100
+            [rp_reqid] => 3662513
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+)
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23651;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23652;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23653;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23654;
+SELECT * FROM rek_service WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '349' ;
+Array
+(
+    [0] => Array
+        (
+            [sid] => 3053
+            [original_pid] => 349
+            [pid] => 130
+            [srm] => 202412
+            [service_code] => 311241
+            [service_name] => 歯科衛生士等居宅療養Ⅰ
+            [service_unit] => 362
+            [kaisu] => 1
+            [tekiyo] => 11
+            [rp_reqid] => 3662513
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [delete_flag] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 2025-01-27 01:41:01
+        )
+
+    [1] => Array
+        (
+            [sid] => 3054
+            [original_pid] => 349
+            [pid] => 130
+            [srm] => 202412
+            [service_code] => 312111
+            [service_name] => 歯科医師居宅療養管理指導Ⅰ
+            [service_unit] => 517
+            [kaisu] => 1
+            [tekiyo] => 24
+            [rp_reqid] => 3662513
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [delete_flag] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 2025-01-27 01:41:01
+        )
+
+)
+update rek_service set manageperiod_status = 5 where sid = '3053';
+update rek_service set manageperiod_status = 5 where sid = '3054';
+SELECT * FROM appendix WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '349' ;
+Array
+(
+)
+UPDATE acc_result SET rp_errorflag = 1 ,carryforward_flag = 1 WHERE rid = '3105' ;
+SELECT * FROM re_shinryo WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                    AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '621' ;
+Array
+(
+    [0] => Array
+        (
+            [sid] => 23749
+            [original_irkkcode] => 1095
+            [original_pid] => 621
+            [pid] => 4083
+            [srd] => 20241202
+            [shikibetsu] => 13
+            [koui] => 308002610
+            [category] => H
+            [shinryo_name] => 歯科口腔リハビリテーション料１（有床義歯の困難）
+            [tensu] => 124
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 248
+            [rp_reqid] => 3662527
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [1] => Array
+        (
+            [sid] => 23750
+            [original_irkkcode] => 1095
+            [original_pid] => 621
+            [pid] => 4083
+            [srd] => 20241202
+            [shikibetsu] => 31
+            [koui] => 304000410
+            [category] => D
+            [shinryo_name] => Ｐ基検（１歯以上１０歯未満）
+            [tensu] => 50
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 100
+            [rp_reqid] => 3662527
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [2] => Array
+        (
+            [sid] => 23751
+            [original_irkkcode] => 1095
+            [original_pid] => 621
+            [pid] => 4083
+            [srd] => 20241202
+            [shikibetsu] => 61
+            [koui] => 313003410
+            [category] => M
+            [shinryo_name] => 印象（欠損補綴（単純（簡単）））
+            [tensu] => 42
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 84
+            [rp_reqid] => 3662527
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [3] => Array
+        (
+            [sid] => 23752
+            [original_irkkcode] => 1095
+            [original_pid] => 621
+            [pid] => 4083
+            [srd] => 20241202
+            [shikibetsu] => 61
+            [koui] => 313008310
+            [category] => M
+            [shinryo_name] => 咬合（有床義歯（多数歯欠損））
+            [tensu] => 318
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 636
+            [rp_reqid] => 3662527
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [4] => Array
+        (
+            [sid] => 23753
+            [original_irkkcode] => 1095
+            [original_pid] => 621
+            [pid] => 4083
+            [srd] => 20241202
+            [shikibetsu] => 63
+            [koui] => 313021610
+            [category] => M
+            [shinryo_name] => 有床義歯修理
+            [tensu] => 0
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 0
+            [rp_reqid] => 3662527
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [5] => Array
+        (
+            [sid] => 23754
+            [original_irkkcode] => 1095
+            [original_pid] => 621
+            [pid] => 4083
+            [srd] => 20241202
+            [shikibetsu] => 
+            [koui] => 313005710
+            [category] => M
+            [shinryo_name] => 装着（欠損補綴（有床義歯修理（多数歯欠損）））
+            [tensu] => 450
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 900
+            [rp_reqid] => 3662527
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [6] => Array
+        (
+            [sid] => 23755
+            [original_irkkcode] => 1095
+            [original_pid] => 621
+            [pid] => 4083
+            [srd] => 20241202
+            [shikibetsu] => 80
+            [koui] => 303000210
+            [category] => C
+            [shinryo_name] => 訪問診療２（診療所）
+            [tensu] => 460
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 920
+            [rp_reqid] => 3662527
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [7] => Array
+        (
+            [sid] => 23756
+            [original_irkkcode] => 1095
+            [original_pid] => 621
+            [pid] => 4083
+            [srd] => 20241202
+            [shikibetsu] => 80
+            [koui] => 303007610
+            [category] => C
+            [shinryo_name] => 歯在管（歯援診１）
+            [tensu] => 340
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 680
+            [rp_reqid] => 3662527
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [8] => Array
+        (
+            [sid] => 23757
+            [original_irkkcode] => 1095
+            [original_pid] => 621
+            [pid] => 4083
+            [srd] => 20241202
+            [shikibetsu] => 80
+            [koui] => 303007410
+            [category] => C
+            [shinryo_name] => 訪衛指（単一建物診療患者が２〜９人）
+            [tensu] => 326
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 652
+            [rp_reqid] => 3662527
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [9] => Array
+        (
+            [sid] => 23758
+            [original_irkkcode] => 1095
+            [original_pid] => 621
+            [pid] => 4083
+            [srd] => 20241202
+            [shikibetsu] => 80
+            [koui] => 316016910
+            [category] => P
+            [shinryo_name] => 歯科外来・在宅ベースアップ評価料（１）（訪問診療・同一建物）
+            [tensu] => 10
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 20
+            [rp_reqid] => 3662527
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [10] => Array
+        (
+            [sid] => 23759
+            [original_irkkcode] => 1095
+            [original_pid] => 621
+            [pid] => 4083
+            [srd] => 20241202
+            [shikibetsu] => 80
+            [koui] => 316017010
+            [category] => P
+            [shinryo_name] => 歯科外来・在宅ベースアップ評価料（２）１（初診又は訪問診療時）
+            [tensu] => 8
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 16
+            [rp_reqid] => 3662527
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+)
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23749;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23750;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23751;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23752;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23753;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23754;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23755;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23756;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23757;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23758;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23759;
+SELECT * FROM rek_service WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '621' ;
+Array
+(
+)
+SELECT * FROM appendix WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '621' ;
+Array
+(
+    [0] => Array
+        (
+            [app_id] => 791
+            [original_pid] => 621
+            [app_date] => 20241231
+            [app_cat] => 3
+            [app_item] => 交通費12/2（100）
+            [app_price] => 100
+            [rp_reqid] => 3662527
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [disp] => 0
+        )
+
+)
+update appendix set manageperiod_status = 5 where app_id = '791';
+UPDATE acc_result SET rp_errorflag = 1 ,carryforward_flag = 1 WHERE rid = '3119' ;
+SELECT * FROM re_shinryo WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                    AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '622' ;
+Array
+(
+    [0] => Array
+        (
+            [sid] => 23780
+            [original_irkkcode] => 1095
+            [original_pid] => 622
+            [pid] => 4084
+            [srd] => 20241216
+            [shikibetsu] => 13
+            [koui] => 308002610
+            [category] => H
+            [shinryo_name] => 歯科口腔リハビリテーション料１（有床義歯の困難）
+            [tensu] => 124
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 248
+            [rp_reqid] => 3662530
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [1] => Array
+        (
+            [sid] => 23781
+            [original_irkkcode] => 1095
+            [original_pid] => 622
+            [pid] => 4084
+            [srd] => 20241216
+            [shikibetsu] => 21
+            [koui] => 306000710
+            [category] => F
+            [shinryo_name] => 処方料（１以外）
+            [tensu] => 42
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 84
+            [rp_reqid] => 3662530
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [2] => Array
+        (
+            [sid] => 23782
+            [original_irkkcode] => 1095
+            [original_pid] => 622
+            [pid] => 4084
+            [srd] => 20241216
+            [shikibetsu] => 21
+            [koui] => 306000110
+            [category] => F
+            [shinryo_name] => 調剤料（入院外）（内服薬等）
+            [tensu] => 11
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 22
+            [rp_reqid] => 3662530
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [3] => Array
+        (
+            [sid] => 23783
+            [original_irkkcode] => 1095
+            [original_pid] => 622
+            [pid] => 4084
+            [srd] => 20241216
+            [shikibetsu] => 21
+            [koui] => 302003310
+            [category] => B
+            [shinryo_name] => 薬情
+            [tensu] => 4
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 8
+            [rp_reqid] => 3662530
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [4] => Array
+        (
+            [sid] => 23784
+            [original_irkkcode] => 1095
+            [original_pid] => 622
+            [pid] => 4084
+            [srd] => 20241216
+            [shikibetsu] => 21
+            [koui] => 616140105
+            [category] => Y
+            [shinryo_name] => クラリス錠２００　２００ｍｇ
+            [tensu] => 6
+            [kaisu] => 3
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 12
+            [rp_reqid] => 3662530
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [5] => Array
+        (
+            [sid] => 23785
+            [original_irkkcode] => 1095
+            [original_pid] => 622
+            [pid] => 4084
+            [srd] => 20241216
+            [shikibetsu] => 21
+            [koui] => 620002023
+            [category] => Y
+            [shinryo_name] => カロナール錠２００　２００ｍｇ
+            [tensu] => 1
+            [kaisu] => 3
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 2
+            [rp_reqid] => 3662530
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [6] => Array
+        (
+            [sid] => 23786
+            [original_irkkcode] => 1095
+            [original_pid] => 622
+            [pid] => 4084
+            [srd] => 20241216
+            [shikibetsu] => 31
+            [koui] => 304000510
+            [category] => D
+            [shinryo_name] => Ｐ基検（１０歯以上２０歯未満）
+            [tensu] => 110
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 220
+            [rp_reqid] => 3662530
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [7] => Array
+        (
+            [sid] => 23787
+            [original_irkkcode] => 1095
+            [original_pid] => 622
+            [pid] => 4084
+            [srd] => 20241216
+            [shikibetsu] => 43
+            [koui] => 310000210
+            [category] => J
+            [shinryo_name] => 抜歯（前歯）
+            [tensu] => 240
+            [kaisu] => 2
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 480
+            [rp_reqid] => 3662530
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [8] => Array
+        (
+            [sid] => 23788
+            [original_irkkcode] => 1095
+            [original_pid] => 622
+            [pid] => 4084
+            [srd] => 20241216
+            [shikibetsu] => 80
+            [koui] => 303000210
+            [category] => C
+            [shinryo_name] => 訪問診療２（診療所）
+            [tensu] => 460
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 920
+            [rp_reqid] => 3662530
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [9] => Array
+        (
+            [sid] => 23789
+            [original_irkkcode] => 1095
+            [original_pid] => 622
+            [pid] => 4084
+            [srd] => 20241216
+            [shikibetsu] => 80
+            [koui] => 303007610
+            [category] => C
+            [shinryo_name] => 歯在管（歯援診１）
+            [tensu] => 340
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 680
+            [rp_reqid] => 3662530
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [10] => Array
+        (
+            [sid] => 23790
+            [original_irkkcode] => 1095
+            [original_pid] => 622
+            [pid] => 4084
+            [srd] => 20241216
+            [shikibetsu] => 80
+            [koui] => 303007410
+            [category] => C
+            [shinryo_name] => 訪衛指（単一建物診療患者が２〜９人）
+            [tensu] => 326
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 652
+            [rp_reqid] => 3662530
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [11] => Array
+        (
+            [sid] => 23791
+            [original_irkkcode] => 1095
+            [original_pid] => 622
+            [pid] => 4084
+            [srd] => 20241216
+            [shikibetsu] => 80
+            [koui] => 316016910
+            [category] => P
+            [shinryo_name] => 歯科外来・在宅ベースアップ評価料（１）（訪問診療・同一建物）
+            [tensu] => 10
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 20
+            [rp_reqid] => 3662530
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [12] => Array
+        (
+            [sid] => 23792
+            [original_irkkcode] => 1095
+            [original_pid] => 622
+            [pid] => 4084
+            [srd] => 20241216
+            [shikibetsu] => 80
+            [koui] => 316017010
+            [category] => P
+            [shinryo_name] => 歯科外来・在宅ベースアップ評価料（２）１（初診又は訪問診療時）
+            [tensu] => 8
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 16
+            [rp_reqid] => 3662530
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+)
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23780;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23781;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23782;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23783;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23784;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23785;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23786;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23787;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23788;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23789;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23790;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23791;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23792;
+SELECT * FROM rek_service WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '622' ;
+Array
+(
+)
+SELECT * FROM appendix WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '622' ;
+Array
+(
+    [0] => Array
+        (
+            [app_id] => 798
+            [original_pid] => 622
+            [app_date] => 20241231
+            [app_cat] => 3
+            [app_item] => 交通費12/16（100）
+            [app_price] => 100
+            [rp_reqid] => 3662530
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [disp] => 0
+        )
+
+)
+update appendix set manageperiod_status = 5 where app_id = '798';
+UPDATE acc_result SET rp_errorflag = 1 ,carryforward_flag = 1 WHERE rid = '3122' ;
+SELECT * FROM re_shinryo WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                    AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '623' ;
+Array
+(
+    [0] => Array
+        (
+            [sid] => 23793
+            [original_irkkcode] => 1095
+            [original_pid] => 623
+            [pid] => 4086
+            [srd] => 20241223
+            [shikibetsu] => 13
+            [koui] => 308002510
+            [category] => H
+            [shinryo_name] => 歯科口腔リハビリテーション料１（有床義歯のロ以外）
+            [tensu] => 104
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 208
+            [rp_reqid] => 3662531
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [1] => Array
+        (
+            [sid] => 23794
+            [original_irkkcode] => 1095
+            [original_pid] => 623
+            [pid] => 4086
+            [srd] => 20241223
+            [shikibetsu] => 31
+            [koui] => 304000510
+            [category] => D
+            [shinryo_name] => Ｐ基検（１０歯以上２０歯未満）
+            [tensu] => 110
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 220
+            [rp_reqid] => 3662531
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [2] => Array
+        (
+            [sid] => 23795
+            [original_irkkcode] => 1095
+            [original_pid] => 623
+            [pid] => 4086
+            [srd] => 20241223
+            [shikibetsu] => 80
+            [koui] => 303000210
+            [category] => C
+            [shinryo_name] => 訪問診療２（診療所）
+            [tensu] => 460
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 920
+            [rp_reqid] => 3662531
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [3] => Array
+        (
+            [sid] => 23796
+            [original_irkkcode] => 1095
+            [original_pid] => 623
+            [pid] => 4086
+            [srd] => 20241223
+            [shikibetsu] => 80
+            [koui] => 303007610
+            [category] => C
+            [shinryo_name] => 歯在管（歯援診１）
+            [tensu] => 340
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 680
+            [rp_reqid] => 3662531
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [4] => Array
+        (
+            [sid] => 23797
+            [original_irkkcode] => 1095
+            [original_pid] => 623
+            [pid] => 4086
+            [srd] => 20241223
+            [shikibetsu] => 80
+            [koui] => 303007410
+            [category] => C
+            [shinryo_name] => 訪衛指（単一建物診療患者が２〜９人）
+            [tensu] => 326
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 652
+            [rp_reqid] => 3662531
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [5] => Array
+        (
+            [sid] => 23798
+            [original_irkkcode] => 1095
+            [original_pid] => 623
+            [pid] => 4086
+            [srd] => 20241223
+            [shikibetsu] => 80
+            [koui] => 316016910
+            [category] => P
+            [shinryo_name] => 歯科外来・在宅ベースアップ評価料（１）（訪問診療・同一建物）
+            [tensu] => 10
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 20
+            [rp_reqid] => 3662531
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [6] => Array
+        (
+            [sid] => 23799
+            [original_irkkcode] => 1095
+            [original_pid] => 623
+            [pid] => 4086
+            [srd] => 20241223
+            [shikibetsu] => 80
+            [koui] => 316017010
+            [category] => P
+            [shinryo_name] => 歯科外来・在宅ベースアップ評価料（２）１（初診又は訪問診療時）
+            [tensu] => 8
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 20
+            [copayment] => 16
+            [rp_reqid] => 3662531
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+)
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23793;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23794;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23795;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23796;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23797;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23798;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23799;
+SELECT * FROM rek_service WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '623' ;
+Array
+(
+)
+SELECT * FROM appendix WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '623' ;
+Array
+(
+    [0] => Array
+        (
+            [app_id] => 799
+            [original_pid] => 623
+            [app_date] => 20241231
+            [app_cat] => 3
+            [app_item] => 交通費12/23（100）
+            [app_price] => 100
+            [rp_reqid] => 3662531
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [disp] => 0
+        )
+
+)
+update appendix set manageperiod_status = 5 where app_id = '799';
+UPDATE acc_result SET rp_errorflag = 1 ,carryforward_flag = 1 WHERE rid = '3123' ;
+SELECT * FROM re_shinryo WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                    AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '624' ;
+Array
+(
+    [0] => Array
+        (
+            [sid] => 23813
+            [original_irkkcode] => 1095
+            [original_pid] => 624
+            [pid] => 4034
+            [srd] => 20241216
+            [shikibetsu] => 41
+            [koui] => 309000210
+            [category] => I
+            [shinryo_name] => 咬調（１歯以上１０歯未満）
+            [tensu] => 40
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 40
+            [rp_reqid] => 3662534
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [1] => Array
+        (
+            [sid] => 23814
+            [original_irkkcode] => 1095
+            [original_pid] => 624
+            [pid] => 4034
+            [srd] => 20241216
+            [shikibetsu] => 80
+            [koui] => 303000210
+            [category] => C
+            [shinryo_name] => 訪問診療２（診療所）
+            [tensu] => 460
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 460
+            [rp_reqid] => 3662534
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [2] => Array
+        (
+            [sid] => 23815
+            [original_irkkcode] => 1095
+            [original_pid] => 624
+            [pid] => 4034
+            [srd] => 20241216
+            [shikibetsu] => 80
+            [koui] => 303007610
+            [category] => C
+            [shinryo_name] => 歯在管（歯援診１）
+            [tensu] => 340
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 340
+            [rp_reqid] => 3662534
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [3] => Array
+        (
+            [sid] => 23816
+            [original_irkkcode] => 1095
+            [original_pid] => 624
+            [pid] => 4034
+            [srd] => 20241216
+            [shikibetsu] => 80
+            [koui] => 303007410
+            [category] => C
+            [shinryo_name] => 訪衛指（単一建物診療患者が２〜９人）
+            [tensu] => 326
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 326
+            [rp_reqid] => 3662534
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [4] => Array
+        (
+            [sid] => 23817
+            [original_irkkcode] => 1095
+            [original_pid] => 624
+            [pid] => 4034
+            [srd] => 20241216
+            [shikibetsu] => 80
+            [koui] => 316016910
+            [category] => P
+            [shinryo_name] => 歯科外来・在宅ベースアップ評価料（１）（訪問診療・同一建物）
+            [tensu] => 10
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 10
+            [rp_reqid] => 3662534
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+    [5] => Array
+        (
+            [sid] => 23818
+            [original_irkkcode] => 1095
+            [original_pid] => 624
+            [pid] => 4034
+            [srd] => 20241216
+            [shikibetsu] => 80
+            [koui] => 316017010
+            [category] => P
+            [shinryo_name] => 歯科外来・在宅ベースアップ評価料（２）１（初診又は訪問診療時）
+            [tensu] => 8
+            [kaisu] => 1
+            [futan] => 1
+            [syubetsu] => 3318
+            [ratio] => 10
+            [copayment] => 8
+            [rp_reqid] => 3662534
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [upper] => 
+            [srm] => 0
+            [update_date] => 2025-02-21 20:42:29
+            [regist_date] => 0000-00-00 00:00:00
+        )
+
+)
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23813;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23814;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23815;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23816;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23817;
+UPDATE re_shinryo SET manageperiod_status = 5 WHERE sid = 23818;
+SELECT * FROM rek_service WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '624' ;
+Array
+(
+)
+SELECT * FROM appendix WHERE (manageperiod_targetym = '202501' AND manageperiod_targetym != 0) 
+                     AND (manageperiod_status != 5 AND manageperiod_status != 4 AND manageperiod_status != 9) AND original_pid = '624' ;
+Array
+(
+    [0] => Array
+        (
+            [app_id] => 802
+            [original_pid] => 624
+            [app_date] => 20241231
+            [app_cat] => 3
+            [app_item] => 交通費12/16（100）
+            [app_price] => 100
+            [rp_reqid] => 3662534
+            [manageperiod_status] => 3
+            [manageperiod_targetym] => 202501
+            [disp] => 0
+        )
+
+)
+update appendix set manageperiod_status = 5 where app_id = '802';
+UPDATE acc_result SET rp_errorflag = 1 ,carryforward_flag = 1 WHERE rid = '3126' ;
