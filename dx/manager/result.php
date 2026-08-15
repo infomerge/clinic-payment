@@ -84,11 +84,14 @@ if($god != 0){ exit; }
 
 /**
  * codの先頭2文字でDB名を切り替え
+ * im-... → 内科本番 / ph-... → 薬科本番 / それ以外 → 歯科本番
  */
 $codPrefix = substr($cod, 0, 2);
 
 if ($codPrefix === 'im') {
     $dbName = 'xs547384_improd';
+} elseif ($codPrefix === 'ph') {
+    $dbName = 'xs547384_ph';
 } else {
     $dbName = 'xs547384_dx';
 }
