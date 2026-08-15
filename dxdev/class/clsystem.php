@@ -601,7 +601,11 @@ class CLSYSTEM{
                 endforeach;
             endif;
 
-            $this->mergeKaigoOnlyLivePaymentDataIntoAccDetail($acc_detail_data);
+            # 領収書は acc_result の振替結果（rp_errorflag=9 等）を通したものだけ出力する。
+            # 介護のみライブ補完は請求書側のみ（未振替の過去分が領収書に混入するのを防ぐ）
+            if($this->format != "ryosyu"){
+                $this->mergeKaigoOnlyLivePaymentDataIntoAccDetail($acc_detail_data);
+            }
             return $acc_detail_data;
         
         else:
