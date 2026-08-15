@@ -48,7 +48,34 @@ imdev/pdf/tcpdf-set/
 imdev/PHPMailer/
 imdev/vendor/
 
+# ph フォルダの設定
+ph/_vendor/
+ph/downloadpdf/
+ph/libs/*
+!ph/libs/templates/
+ph/mpdf-development/
+ph/pdf/mpdf/
+ph/pdf/mpdf-test/
+ph/pdf/tcpdf-set/
+ph/PHPMailer/
+ph/vendor/
+
+# phdev フォルダの設定
+phdev/_vendor/
+phdev/downloadpdf/
+phdev/libs/*
+!phdev/libs/templates/
+phdev/mpdf-development/
+phdev/pdf/mpdf/
+phdev/pdf/mpdf-test/
+phdev/pdf/tcpdf-set/
+phdev/PHPMailer/
+phdev/vendor/
+
 # その他、OSが生成する不要ファイル
 .DS_Store
 
+# 科目フォルダ内の docs（レセプトサンプル等）は除外。リポジトリ直下の docs/ は追跡する
 **/docs/*
+!docs/
+!docs/**
