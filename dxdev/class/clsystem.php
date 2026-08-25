@@ -2100,13 +2100,14 @@ EOD;
         $data = array();
         if(isset($this->targetym) && $this->targetym != ""):
             #$sql = "SELECT a.*, b.patient_birth, b.patient_name FROM acc_result as a , patient_info as b WHERE a.original_pid = b.original_pid and  a.targetym = '{$_GET['targetym']}';";
-            $sql = "SELECT a.*, b.patient_birth, b.patient_name, c.original_irkkcode  
+            $sql = "SELECT a.*, b.patient_birth, b.patient_name, b.patient_kana, b.rp_cid, c.original_irkkcode  
                     FROM acc_result as a 
                     , patient_info as b 
                     , accountpatient_relation as c 
                     WHERE a.original_pid = b.original_pid 
                     and a.original_pid = c.original_pid 
-                    and  a.targetym = '{$this->targetym}' order by a.rid asc";
+                    and  a.targetym = '{$this->targetym}' 
+                    order by (b.patient_kana = '') ASC, b.patient_kana ASC, a.rid ASC";
 
             $stmt = $this->db->databasequery($sql);
             $tmp_acc_data = $stmt->fetchALL(PDO::FETCH_ASSOC);
@@ -2241,15 +2242,15 @@ EOD;
                     </table><br/>\n";
 
             #回収明細テーブル
-            $html .= "<table id=\"hoken-table\">
+            $html .= "<table id=\"hoken-table\" class=\"kaisyu-meisai\">
                         <tr>
                             <th>No.</th>
-                            <th>ステータス</th>
+                            <th class=\"col-status\">ステータス</th>
                             <th>患者名</th>
                             <th>生年月日</th>
                             <th>金額</th>
                             <th>回収方法</th>
-                            <th>回収日</th>
+                            <th class=\"col-date\">回収日</th>
                         </tr>";
 
             $cnt = 1;
@@ -2275,17 +2276,39 @@ EOD;
                 } else {
                     $status = "未回収";
                     $date = "---";
+                    # 振込・現金（rp_disableflag != 0）は回収方法列で分かるので理由は付けない
+                    if($v['rp_disableflag'] == 0){
+                        if($v['rp_errorflag'] == 1){
+                            global $m_transfer_result;
+                            $error_code = '';
+                            if(isset($v['ec']) && trim((string)$v['ec']) !== '' && trim((string)$v['ec']) !== '0'){
+                                $error_code = trim((string)$v['ec']);
+                            }elseif(isset($v['rp_errormsg']) && trim((string)$v['rp_errormsg']) !== ''){
+                                $error_code = trim((string)$v['rp_errormsg']);
+                            }
+                            if(preg_match('/^(ER\d+|J\d+)/i', $error_code, $m)){
+                                $error_code = strtoupper($m[1]);
+                            }
+                            $error_reason = 'その他';
+                            if(isset($m_transfer_result[$error_code])){
+                                $error_reason = $m_transfer_result[$error_code];
+                            }
+                            $status .= " [".$error_reason."]";
+                        }elseif(!isset($v['rp_cid']) || trim((string)$v['rp_cid']) === ''){
+                            $status .= " <span style=\"font-size:28px;font-weight:bold;\">[要口座登録]</span>";
+                        }
+                    }
                 }
 
                 $html .= "<tr>
                             <td>".$cnt."</td>
-                            <td>".$status."</td>
+                            <td class=\"col-status\">".$status."</td>
                             <td>"."[".$v['original_pid']."]".$v['patient_name']."</td>
                             <td>".date('Y年m月d日',strtotime($v['patient_birth']))."</td>
                             <!--<td>¥".number_format($v['ta'])."</td>-->
                             <td>¥".number_format($v['am'])."</td>
                             <td>".$kaisyu_method."</td>
-                            <td>".$date."</td>
+                            <td class=\"col-date\">".$date."</td>
                         </tr>";
 
                 if($cnt < count($acc_data)) $cnt++;
@@ -2446,6 +2469,14 @@ EOD;
             #hoken-table{
                 table-layout: fixed;
                 width: 1400px;
+            }
+            .kaisyu-meisai .col-status{
+                width: 280px;
+                white-space: nowrap;
+            }
+            .kaisyu-meisai .col-date{
+                width: 170px;
+                white-space: nowrap;
             }
             .hoken-col{
                 width:15%;

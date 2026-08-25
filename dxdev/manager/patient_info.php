@@ -37,6 +37,8 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     // $data定義
 		$data['original_pid'] = $_REQUEST['original_pid'];
 		$data['patient_name'] = $_REQUEST['patient_name'];
+		$patient_kana = isset($_REQUEST['patient_kana']) ? $_REQUEST['patient_kana'] : '';
+		$data['patient_kana'] = mb_convert_kana(trim($patient_kana), 'KCV');
 		$data['patient_birth'] = $_REQUEST['patient_birth'];
 		$data['patient_hihoban'] = $_REQUEST['patient_hihoban'];
 		$data['email'] = $_REQUEST['email'];

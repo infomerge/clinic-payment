@@ -124,6 +124,11 @@ function setbranch(id,branch_name){
             <tr><th>患者名</th>
             <td class="bg_odd"><input type="text" name="patient_name" value="{$data.patient_name}" class="frmtxt" style="width:200px;" /></td></tr>
 
+            <tr><th>患者名カナ</th>
+            <td class="bg_odd"><input type="text" name="patient_kana" value="{$data.patient_kana}" class="frmtxt" style="width:200px;" />
+              <div style="margin-top:5px;">※全角カタカナ推奨（保存時に全角カタカナへ変換）</div>
+            </td></tr>
+
             <tr><th>生年月日</th>
             <td class="bg_odd"><input type="text" name="patient_birth" value="{$data.patient_birth}" class="frmtxt" style="width:200px;" /></td></tr>
 
