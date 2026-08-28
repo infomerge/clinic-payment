@@ -6,13 +6,26 @@ set_time_limit(0);
 include_once "../common/smarty_settings.php";
 include_once "../class/config.php";
 
+/*
+ * imdev 向け step2 デバッグ
+ *
+ * プレビュー（DB書き込みなし）:
+ *   ?manageperiod_flag=2&original_pid=587&targetym=202607&testview=1
+ *
+ * acc_result のみ INSERT（status 一括更新なし）:
+ *   ?manageperiod_flag=2&original_pid=587&targetym=202607
+ *
+ * acc_result + manageperiod_status=2 まで実行:
+ *   上記に &commit=1
+ *
+ * manageperiod_flag: 1=締め対象全体, 2=original_pid 指定
+ */
 
 //対象の期間と患者名を取得
-#POST
 if (isset($GLOBALS['argv'][1])) {
   $manageperiod_flag = $GLOBALS['argv'][1];
 }else{
-  $manageperiod_flag = $_GET["manageperiod_flag"];
+  $manageperiod_flag = isset($_GET["manageperiod_flag"]) ? $_GET["manageperiod_flag"] : "";
 }
 if (isset($GLOBALS['argv'][2])) {
   $original_pid = $GLOBALS['argv'][2];
@@ -25,38 +38,113 @@ if (isset($GLOBALS['argv'][3])) {
   $targetym = isset($_GET["targetym"]) ? $_GET["targetym"] : "";
 }
 
+$testview = isset($_REQUEST['testview']) && $_REQUEST['testview'] == 1;
+$commit = isset($_REQUEST['commit']) && $_REQUEST['commit'] == 1;
+$srd_start = isset($_GET["srd_start"]) ? $_GET["srd_start"] : "";
+$srd_end = isset($_GET["srd_end"]) ? $_GET["srd_end"] : "";
 
+/**
+ * max_copayment の srm キーは RE の診療年月(202607) で、re_shinryo.srd の先頭6桁(202606) と
+ * ずれることがあるため、targetym / srd 先頭 / 登録済みキーを順に探す。
+ */
+function step2debug_resolve_max_copayment($m_max, $original_pid, $patient_data, $targetym) {
+  if (!isset($m_max[$original_pid]) || !is_array($m_max[$original_pid])) {
+    return null;
+  }
+  $candidates = array($targetym);
+  if (isset($patient_data['srd']) && is_array($patient_data['srd'])) {
+    foreach (array_keys($patient_data['srd']) as $srd) {
+      $candidates[] = mb_substr($srd, 0, 6);
+    }
+  }
+  if (isset($patient_data['data']['srd'])) {
+    $candidates[] = mb_substr($patient_data['data']['srd'], 0, 6);
+  }
+  $candidates = array_unique($candidates);
+  foreach ($candidates as $srm) {
+    if ($srm === '') {
+      continue;
+    }
+    if (isset($m_max[$original_pid][$srm]) && $m_max[$original_pid][$srm] !== '' && $m_max[$original_pid][$srm] !== null) {
+      return $m_max[$original_pid][$srm];
+    }
+  }
+  foreach ($m_max[$original_pid] as $val) {
+    if ($val !== '' && $val !== null && (float)$val > 0) {
+      return $val;
+    }
+  }
+  return null;
+}
+
+function step2debug_calc_total_copayment($patient_data, $m_max, $kaigo_trans, $original_pid, $targetym) {
+  $total_copayment = 0;
+  if (isset($patient_data['srd']) && is_array($patient_data['srd'])) {
+    foreach ($patient_data['srd'] as $shinryo_cat) {
+      $total_copayment += $shinryo_cat['copayment'];
+    }
+  }
+  $max_copayment = step2debug_resolve_max_copayment($m_max, $original_pid, $patient_data, $targetym);
+  if ($max_copayment !== null && (float)$max_copayment > 0) {
+    $total_copayment = $max_copayment;
+  }
+  if (isset($kaigo_trans[$original_pid]['srm']) && is_array($kaigo_trans[$original_pid]['srm'])) {
+    foreach ($kaigo_trans[$original_pid]['srm'] as $v) {
+      $total_copayment += 10 * $v['tensu'] * $v['rate'] / 100;
+    }
+  }
+  for ($i = 1; $i <= 3; $i++) {
+    if (isset($patient_data['app_cat'][$i])) {
+      $total_copayment += $patient_data['app_cat'][$i];
+    }
+  }
+  return $total_copayment;
+}
 
 #$srm = mb_substr($srd_start,0,6);
 $srm = "";
 
-
-#DB接続
+#DB接続（DB名=DBNAME / ユーザ名=xs547384_dx … imdev 他スクリプトと同じ）
 $dbh = new PDO('mysql:dbname='.DBNAME.';host=localhost;charset=utf8','xs547384_dx','wwxlkl7m');
 $dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-#医療保険マスター
-#$sql = "SELECT * FROM manageperiod where status = 0;";
-#$sql = "SELECT * FROM manageperiod where status = 1;";
-$sql = "SELECT * FROM manageperiod where status = 2;";
-$stmt = $dbh->query($sql);
-$manageperiod = $stmt->fetchALL(PDO::FETCH_ASSOC);
-if(count($manageperiod) == 0){
-  echo "なし";
-  exit;
-}else{
-  #print_r($manageperiod);
+if ($targetym === "") {
+  $stmt = $dbh->query("SELECT targetym, status FROM manageperiod WHERE status <> 9 ORDER BY targetym DESC LIMIT 1");
+  $manageperiod_row = $stmt->fetch(PDO::FETCH_ASSOC);
+  if ($manageperiod_row && isset($manageperiod_row['targetym'])) {
+    $targetym = $manageperiod_row['targetym'];
+  }
 }
-$status = $manageperiod[0]['status'];
-#$targetym = $manageperiod[0]['targetym'];
-#echo $status."---".$targetym."---";
-#print_r($manageperiod);exit;
+
+if ($targetym === "") {
+  echo "targetym が未指定です。URL に targetym=202607 等を付けてください。";
+  exit;
+}
+
+if ($manageperiod_flag === "" || !in_array((string)$manageperiod_flag, array('1', '2'), true)) {
+  echo "manageperiod_flag は 1（全体）または 2（患者指定）を指定してください。";
+  exit;
+}
+
+if ((string)$manageperiod_flag === '2' && $original_pid === "") {
+  echo "manageperiod_flag=2 の場合は original_pid が必要です。";
+  exit;
+}
+
+if ($testview) {
+  echo "DB: ".DBNAME." / targetym: {$targetym} / manageperiod_flag: {$manageperiod_flag}";
+  if ($original_pid !== "") {
+    echo " / original_pid: {$original_pid}";
+  }
+  echo " / mode: preview (testview=1)\n\n";
+}
 
 
-#医療保険マスター
+#医療保険マスター（step2 getPaymentData と同じ JOIN）
 $sql = "SELECT *
         FROM re_shinryo INNER JOIN re_patient ON re_shinryo.pid = re_patient.pid
-                        INNER JOIN patient_info ON re_shinryo.original_pid = patient_info.original_pid ";
+                        INNER JOIN patient_info ON re_shinryo.original_pid = patient_info.original_pid
+                        INNER JOIN account_info ON re_shinryo.original_irkkcode = account_info.original_irkkcode ";
 
 if($manageperiod_flag == 1):
   $sql .= "WHERE (re_shinryo.manageperiod_status = 1 OR re_shinryo.manageperiod_status = 5) AND re_shinryo.manageperiod_targetym = '{$targetym}'";
@@ -66,12 +154,18 @@ else:
   $sql .= "WHERE srd >= '$srd_start' AND srd <= '$srd_end'";
 endif;
 
-$sql .= " AND patient_info.disp = 0 order by re_shinryo.srd,re_shinryo.category";
+$sql .= " AND patient_info.disp = 0 AND patient_info.invoice_output = 0 order by re_shinryo.srd,re_shinryo.category";
 
 #echo $sql."<br>\n";exit;
 
 $stmt = $dbh->query($sql);
 $iryo_data = $stmt->fetchALL(PDO::FETCH_ASSOC);
+
+if (count($iryo_data) === 0) {
+  echo "re_shinryo が 0 件です（JOIN 条件または manageperiod_targetym を確認してください）。\n";
+  echo "SQL: {$sql}\n";
+  exit;
+}
 #print_r($iryo_data);
 
   #介護保険マスター
@@ -170,6 +264,8 @@ foreach($data as $original_pid => $dt) {
 
   if($manageperiod_flag == 1):
     $sql .= "WHERE (appendix.manageperiod_status = 1 OR appendix.manageperiod_status = 5) AND appendix.manageperiod_targetym = '{$targetym}' ";
+  elseif($manageperiod_flag == 2):
+    $sql .= "WHERE appendix.manageperiod_targetym = '{$targetym}' ";
   else:
     $sql .= "WHERE app_date >= '$srd_start' AND app_date <= '$srd_end' ";
   endif;
@@ -214,16 +310,23 @@ foreach($data as $original_pid => $v) {
   }
 }
 
-if( isset($_REQUEST['testview']) && $_REQUEST['testview'] == 1){
-  print_r($data);exit;
+if ($testview) {
+  foreach ($data as $opid => $patient_data) {
+    $preview_total = step2debug_calc_total_copayment($patient_data, $m_max, $kaigo_trans, $opid, $targetym);
+    $max_val = step2debug_resolve_max_copayment($m_max, $opid, $patient_data, $targetym);
+    $pname = isset($patient_data['data']['name']) ? $patient_data['data']['name'] : '';
+    echo "original_pid={$opid}\t{$pname}\ttotal_copayment={$preview_total}\tmax_copayment=" . ($max_val !== null ? $max_val : 'なし') . "\n";
+  }
+  echo "\n--- raw data ---\n";
+  print_r($data);
+  exit;
 }
 
 
 #個人毎PDFデータ生成
 $cnt = 1;
-  $total_tensu = 0;
-  $total_copayment = 0;
-  #$total_service_unit = 0;
+$insert_count = 0;
+$skipped_messages = array();
 foreach ($data as $original_pid => $patient_data) {
 #print_r($patient_data);exit;
   #original_pid=0はスルー
@@ -245,44 +348,18 @@ foreach ($data as $original_pid => $patient_data) {
   }
   #if($name_flag == false){continue;}
 
+    $total_copayment = step2debug_calc_total_copayment($patient_data, $m_max, $kaigo_trans, $original_pid, $targetym);
+
+    #支払総額が「0」の場合はスキップ
+    if ($total_copayment == 0) {
+      $max_hint = step2debug_resolve_max_copayment($m_max, $original_pid, $patient_data, $targetym);
+      $skipped_messages[] = "original_pid={$original_pid}: total_copayment=0 のためスキップ（max_copayment=" . ($max_hint !== null ? $max_hint : '未登録') . "）";
+      continue;
+    }
+
     #請求番号
     $tmp_rand = uniqid();
     $inv_id = $patient_data['data']['irkkcode'] . "-" . sprintf('%07d', strval($original_pid)) . "-" . $targetym ."-".$tmp_rand;
-
-    ### ---------- 点数表 ---------- ###
-    #カテゴリーごとの合計点数を$m_category[$k]['tensu']に格納／医療保険の合計金額を$total_copaymentに加算
-    foreach($patient_data['srd'] as $key => $shinryo_cat){
-        $total_copayment += $shinryo_cat['copayment'];
-    }
-
-    #医療／公費負担額が存在する場合は$total_copaymentを上書き
-    $srm = mb_substr($patient_data['data']['srd'],0,6);
-    if(isset($m_max[$original_pid][$srm])){
-      if($m_max[$original_pid][$srm]){
-        $total_copayment = $m_max[$original_pid][$srm];
-      }
-    }else{
-      #$total_copayment = 0;
-    }
-
-    #介護保険の合計点数を$total_service_unitに格納／介護保険の合計金額を$total_copaymentに加算
-    #foreach($patient_data['srm'] as $k => $v){
-    foreach($kaigo_trans[$original_pid]['srm'] as $k => $v){
-        #$total_service_unit += $v['tensu'];
-        $total_copayment += 10 * $v['tensu'] * $v['rate'] / 100;
-    }
-
-    #2020/02/12 一部負担金と支払い総額を分ける必要あり
-    $ichibufutankin = $total_copayment;
-    for($i=1;$i<=3;$i++){
-      if(isset($patient_data['app_cat'][$i])){
-        $total_copayment += $patient_data['app_cat'][$i];
-      }
-    }
-
-
-#支払総額が「0」の場合はスキップ
-if($total_copayment == 0) continue;
 
 echo $original_pid."---".$patient_data['data']['name']."---".$total_copayment."---".$patient_data['data']['direct_debit']."<br>\n";
 #exit;
@@ -294,42 +371,40 @@ $sql = "INSERT INTO acc_result (gid,rst,ap,ec,god,cod,am,tx,sf,ta,em,nm,original
                     VALUES (0,0,0,0,0,'$inv_id','$total_copayment',0,0,0,'','','$original_pid',0,'{$targetym}',null,'{$patient_data['data']['direct_debit']}',0,'');";
 
 $dbh->query($sql);
+    $insert_count++;
 
 #echo $sql."<br>\n";
-#医療保険マスター
-#$sql = "SELECT * FROM account_transfer WHERE target_ym = {$srm} and original_pid = {$original_pid}";
-#$stmt = $dbh->query($sql);
-#$target_data = $stmt->fetchALL(PDO::FETCH_ASSOC);
-
-
-/*
-if(count($target_data)>0){
-  $sql = "UPDATE account_transfer SET price WHERE target_ym = {$srm} and original_pid = {$original_pid}";
-  $dbh->query($sql);
-}else{
-  $sql = "INSERT into account_transfer values(NULL,{$original_pid},{$total_copayment},{$srm});";
-  $dbh->query($sql);
-}
-*/
-    $total_tensu = 0;
-    $total_copayment = 0;
-    #$total_service_unit = 0;
-
-
-
 
 }
 
-#処理完了後、manageperiod_status=2に変更する = acc_resultにレコードが作られた状態
+# 処理完了後、manageperiod_status=2 に変更（imdev では commit=1 のときのみ）
+if ($commit) {
+  $sql = "UPDATE manageperiod SET status = 2 where status = 1 and targetym = '{$targetym}';";
+  $dbh->query($sql);
+  $sql = "UPDATE re_shinryo SET manageperiod_status = 2 where manageperiod_status = 1 and manageperiod_targetym = '{$targetym}';";
+  $dbh->query($sql);
+  $sql = "UPDATE rek_service SET manageperiod_status = 2 where manageperiod_status = 1 and manageperiod_targetym = '{$targetym}';";
+  $dbh->query($sql);
+  $sql = "UPDATE appendix SET manageperiod_status = 2 where manageperiod_status = 1 and manageperiod_targetym = '{$targetym}';";
+  $dbh->query($sql);
+  echo "commit=1: manageperiod / re_shinryo 等を status=2 に更新しました。\n";
+}
 
-$sql = "UPDATE manageperiod SET status = 2 where status = 1 and targetym = '{$targetym}';";
-$dbh->query($sql);
-$sql = "UPDATE re_shinryo SET manageperiod_status = 2 where manageperiod_status = 1 and manageperiod_targetym = '{$targetym}';";
-$dbh->query($sql);
-$sql = "UPDATE rek_service SET manageperiod_status = 2 where manageperiod_status = 1 and manageperiod_targetym = '{$targetym}';";
-$dbh->query($sql);
-$sql = "UPDATE appendix SET manageperiod_status = 2 where manageperiod_status = 1 and manageperiod_targetym = '{$targetym}';";
-$dbh->query($sql);
+if ($insert_count > 0) {
+  echo "acc_result を {$insert_count} 件 INSERT しました。";
+  if (!$commit) {
+    echo " status 一括更新は commit=1 指定時のみ実行します。";
+  }
+  echo "\n";
+} else {
+  echo "acc_result は INSERT されませんでした。\n";
+  foreach ($skipped_messages as $msg) {
+    echo $msg . "\n";
+  }
+  if (empty($skipped_messages)) {
+    echo "対象患者データがありません。\n";
+  }
+}
 
 
 exit;

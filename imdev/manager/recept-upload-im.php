@@ -128,6 +128,8 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
     }
     if ($data[0] == "RE") {
         $ko_flag = false;
+        // 前レセプトの pid が KO（生活保護・HO なし）取込に引き継がれないよう RE 開始時にリセット
+        $pid = "";
         //名前の文字化け回避して$nameに格納
         $name = mb_convert_encoding("{$data[4]}", "UTF-8", "SJIS");
         //診療年月(GYYMM)を西暦に変換して診療月($srm)に格納
@@ -389,6 +391,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
         //-------------------------------------
 
         /* 既に登録があるか否かPID検索（名前／生年月日のAND） */
+        $pid = "";
         $sql = "SELECT pid
                 FROM re_patient
                 WHERE name = '$name'
@@ -398,7 +401,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
             $pid = $row['pid'];
         }
 
-        if ($pid == 0) {
+        if ((int)$pid <= 0) {
             /* 登録が無かった場合は全項目INSERT */
             $sql = "INSERT INTO re_patient (payer,
                                             prefecture,
@@ -429,6 +432,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
                             '$futansya',
                             '$jukyusya')";
             $dbh->query($sql);
+            $pid = $dbh->lastInsertId();
         } else {
             /* 登録があった場合は負担者／受給者コードをUPDATE */
             $sql = "UPDATE re_patient

@@ -40,6 +40,9 @@ $dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 <?php
 
 
+$import_warnings = array();
+$imported_original_pids = array();
+
 if(isset($_POST['submit'])){
     if(!empty($_POST['check_list'])) {
         foreach($_POST['check_list'] as $record) {
@@ -119,6 +122,13 @@ if(isset($_POST['submit'])){
                 $original_pid = $row['original_pid'];
             }
 
+            if (isset($original_pid) && $original_pid !== "") {
+                $imported_original_pids[] = (int)$original_pid;
+            }
+
+            $receipt_patient_name = $name;
+            $receipt_patient_birth = $birth;
+
 
             //上限金額の登録（max_copayment）
             $srm = strval($_SESSION["patientlist_".$record][2]);
@@ -155,8 +165,16 @@ if(isset($_POST['submit'])){
                 $ratio = $k[15];
                 $copayment = $k[16];
 
+                // SESSION の pid が空でも re_patient があれば復元する（生活保護・HO なし等）
+                if ((int)$pid <= 0 && $receipt_patient_name !== "" && $receipt_patient_birth !== "") {
+                    $sql = "SELECT pid FROM re_patient WHERE name = '$receipt_patient_name' AND birth = '$receipt_patient_birth' LIMIT 1";
+                    $stmt = $dbh->query($sql);
+                    foreach ($stmt as $row) {
+                        $pid = $row['pid'];
+                    }
+                }
 
-                if ($pid != 0) {
+                if ((int)$pid > 0) {
                     // Insert into re_shinryo
 										/*
                     $sql = "INSERT INTO re_shinryo (original_irkkcode,
@@ -253,8 +271,19 @@ if(isset($_POST['submit'])){
                     echo "<td>".$copayment."</td>\n";
                     echo "</tr>\n";
 
+                } else {
+                    $import_warnings[] = "レセプト番号 {$record} / {$name} / 診療日 {$srd}: re_patient 未紐付のため re_shinryo へ登録しませんでした";
                 }
 
+            }
+
+            if ((int)$original_pid > 0 && $receipt_patient_name !== "" && $receipt_patient_birth !== "") {
+                $sql = "UPDATE re_patient
+                        SET original_pid = '$original_pid'
+                        WHERE name = '$receipt_patient_name'
+                            AND birth = '$receipt_patient_birth'
+                            AND (original_pid = 0 OR original_pid IS NULL OR original_pid = '')";
+                $dbh->query($sql);
             }
 
             $_SESSION["patientlist_".$record] = array();
@@ -263,12 +292,36 @@ if(isset($_POST['submit'])){
 
         }
         echo "<br>\n";
+
+        // 取込後検証: pid=0 の re_shinryo が残っていないか
+        if (!empty($imported_original_pids)) {
+            $pid_list = implode(',', array_unique($imported_original_pids));
+            $sql = "SELECT original_pid, COUNT(*) AS cnt
+                    FROM re_shinryo
+                    WHERE pid = 0 AND original_pid IN ($pid_list)
+                    GROUP BY original_pid";
+            $stmt = $dbh->query($sql);
+            foreach ($stmt as $row) {
+                $import_warnings[] = "取込後検証: original_pid={$row['original_pid']} に pid=0 の re_shinryo が {$row['cnt']} 件残っています";
+            }
+        }
     }
 }
 
 ?>
 
 </table>
+
+<?php if (!empty($import_warnings)) { ?>
+<div align="center" class="tbl" style="margin-top:1em;color:#c00;">
+<strong>取込警告（要確認）</strong>
+<ul style="text-align:left;display:inline-block;">
+<?php foreach ($import_warnings as $warning) { ?>
+<li><?php echo htmlspecialchars($warning, ENT_QUOTES, 'UTF-8'); ?></li>
+<?php } ?>
+</ul>
+</div>
+<?php } ?>
 
 <br /><br /><br />
 
