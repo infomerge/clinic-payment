@@ -54,4 +54,28 @@ function convertG2Year($g,$y){
 	return $y;
 }
 
+# レセプト取込: 氏名+生年月日で re_patient.pid を取得（0 は未紐付）
+function recept_resolve_pid($dbh, $name, $birth) {
+	$pid = 0;
+	if ($name === '' || $birth === '') {
+		return 0;
+	}
+	$sql = "SELECT pid FROM re_patient WHERE name = '$name' AND birth = '$birth' LIMIT 1";
+	$stmt = $dbh->query($sql);
+	foreach ($stmt as $row) {
+		$pid = (int)$row['pid'];
+	}
+	return $pid;
+}
+
+# 行ループで pid が空でも、当該レセプトで確定した receipt_pid を使う
+function recept_use_pid($pid, $receipt_pid) {
+	$pid = (int)$pid;
+	if ($pid > 0) {
+		return $pid;
+	}
+	$receipt_pid = (int)$receipt_pid;
+	return $receipt_pid > 0 ? $receipt_pid : 0;
+}
+
 ?>

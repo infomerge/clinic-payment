@@ -1,6 +1,7 @@
 <?php
 include_once "../common/smarty_settings.php";
 include_once "../class/config.php";
+include_once "../class/functions.php";
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -40,12 +41,24 @@ $dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 <?php
 
 
+$import_warnings = array();
+$imported_original_pids = array();
+
 if(isset($_POST['submit'])){
     if(!empty($_POST['check_list'])) {
         foreach($_POST['check_list'] as $record) {
 
-            //患者データの登録（patient_info）
-            foreach($_SESSION["patient_".$record] as $j) {
+            $original_pid = 0;
+            $pid = 0;
+            $receipt_patient_name = "";
+            $receipt_patient_birth = "";
+            $session_receipt_pid = isset($_SESSION["patientlist_".$record][4]) ? (int)$_SESSION["patientlist_".$record][4] : 0;
+
+            if (empty($_SESSION["patient_".$record])) {
+                $import_warnings[] = "レセプト番号 {$record}: SESSION に患者データがありません";
+            }
+            $patient_session = isset($_SESSION["patient_".$record]) ? $_SESSION["patient_".$record] : array();
+            foreach($patient_session as $j) {
                 $name = strval($j[1]);
                 $birth = strval($j[2]);
                 $hihoki = strval($j[3]);
@@ -63,6 +76,7 @@ if(isset($_POST['submit'])){
                             AND patient_birth = '$birth' AND disp = 0 ";
                 $stmt = $dbh->query($sql);
 
+                $patient_exists = "";
                 foreach ($stmt as $row) {
                     $patient_exists = $row['original_pid'];
                 }
@@ -70,7 +84,7 @@ if(isset($_POST['submit'])){
 
                 //patient_infoに新規登録（既存であればUPDATE,新規であればINSERT）
 								$relation_original_pid = 0;
-                if ($patient_exists) {
+                if ($patient_exists !== "") {
                     $sql = "UPDATE patient_info
                             SET patient_hihoki = '$hihoki',
                                 patient_hihoban = '$hihoban',
@@ -117,10 +131,19 @@ if(isset($_POST['submit'])){
                 $original_pid = $row['original_pid'];
             }
 
+            if (isset($original_pid) && (int)$original_pid > 0) {
+                $imported_original_pids[] = (int)$original_pid;
+            } else {
+                $import_warnings[] = "レセプト番号 {$record}: patient_info.original_pid を特定できませんでした";
+            }
+
+            $receipt_patient_name = $name;
+            $receipt_patient_birth = $birth;
+
 
             //上限金額の登録（max_copayment）
             $srm = strval($_SESSION["patientlist_".$record][2]);
-            $max_copayment = strval($_SESSION["patientlist_".$record][3]);
+            $max_copayment = isset($_SESSION["patientlist_".$record][3]) ? strval($_SESSION["patientlist_".$record][3]) : "";
 
             if ($max_copayment) {
                 $sql = "INSERT INTO max_copayment (original_pid,srm,max_copayment)
@@ -134,7 +157,11 @@ if(isset($_POST['submit'])){
 
 
             //診療データの登録（re_shinryo）・表示
-            foreach($_SESSION["shinryo_".$record] as $k) {
+            $shinryo_session = isset($_SESSION["shinryo_".$record]) ? $_SESSION["shinryo_".$record] : array();
+            if (empty($shinryo_session)) {
+                $import_warnings[] = "レセプト番号 {$record}: SESSION に診療行がありません";
+            }
+            foreach($shinryo_session as $k) {
 
                 $rid = $k[0];
                 $sid = $k[1];
@@ -153,8 +180,15 @@ if(isset($_POST['submit'])){
                 $ratio = $k[15];
                 $copayment = $k[16];
 
+                // 2段階取込: SESSION pid → 解析時に保存した receipt_pid → re_patient 検索
+                if ((int)$pid <= 0 && $session_receipt_pid > 0) {
+                    $pid = $session_receipt_pid;
+                }
+                if ((int)$pid <= 0 && $receipt_patient_name !== "" && $receipt_patient_birth !== "") {
+                    $pid = recept_resolve_pid($dbh, $receipt_patient_name, $receipt_patient_birth);
+                }
 
-                if ($pid != 0) {
+                if ((int)$pid > 0) {
                     // Insert into re_shinryo
 										/*
                     $sql = "INSERT INTO re_shinryo (original_irkkcode,
@@ -228,7 +262,7 @@ if(isset($_POST['submit'])){
                                     '$syubetsu',
                                     '$ratio',
                                     '$copayment');";
-										echo $sql."<br>\n";
+										#echo $sql."<br>\n";
                     $dbh->query($sql);
 
                     echo "<tr>";
@@ -251,8 +285,19 @@ if(isset($_POST['submit'])){
                     echo "<td>".$copayment."</td>\n";
                     echo "</tr>\n";
 
+                } else {
+                    $import_warnings[] = "レセプト番号 {$record} / {$name} / 診療日 {$srd}: re_patient 未紐付のため re_shinryo へ登録しませんでした";
                 }
 
+            }
+
+            if ((int)$original_pid > 0 && $receipt_patient_name !== "" && $receipt_patient_birth !== "") {
+                $sql = "UPDATE re_patient
+                        SET original_pid = '$original_pid'
+                        WHERE name = '$receipt_patient_name'
+                            AND birth = '$receipt_patient_birth'
+                            AND (original_pid = 0 OR original_pid IS NULL OR original_pid = '')";
+                $dbh->query($sql);
             }
 
             $_SESSION["patientlist_".$record] = array();
@@ -261,12 +306,56 @@ if(isset($_POST['submit'])){
 
         }
         echo "<br>\n";
+
+        // 取込後検証: JOIN 不能な診療行、キー不一致
+        if (!empty($imported_original_pids)) {
+            $pid_list = implode(',', array_unique($imported_original_pids));
+            $sql = "SELECT original_pid, COUNT(*) AS cnt
+                    FROM re_shinryo
+                    WHERE (pid <= 0 OR pid IS NULL) AND original_pid IN ($pid_list)
+                    GROUP BY original_pid";
+            $stmt = $dbh->query($sql);
+            foreach ($stmt as $row) {
+                $import_warnings[] = "取込後検証: original_pid={$row['original_pid']} に pid=0 の re_shinryo が {$row['cnt']} 件残っています";
+            }
+            $sql = "SELECT rs.original_pid, COUNT(*) AS cnt
+                    FROM re_shinryo rs
+                    LEFT JOIN re_patient rp ON rs.pid = rp.pid AND rs.pid > 0
+                    WHERE rs.original_pid IN ($pid_list) AND rp.pid IS NULL
+                    GROUP BY rs.original_pid";
+            $stmt = $dbh->query($sql);
+            foreach ($stmt as $row) {
+                $import_warnings[] = "取込後検証: original_pid={$row['original_pid']} は re_patient と JOIN できない re_shinryo が {$row['cnt']} 件あります";
+            }
+            $sql = "SELECT rp.pid, rp.original_pid AS rp_opid, rs.original_pid AS rs_opid
+                    FROM re_patient rp
+                    INNER JOIN re_shinryo rs ON rs.pid = rp.pid
+                    WHERE rs.original_pid IN ($pid_list)
+                    AND rp.original_pid IS NOT NULL AND rp.original_pid <> '' AND rp.original_pid <> '0'
+                    AND CAST(rp.original_pid AS CHAR) <> CAST(rs.original_pid AS CHAR)
+                    GROUP BY rp.pid, rp.original_pid, rs.original_pid";
+            $stmt = $dbh->query($sql);
+            foreach ($stmt as $row) {
+                $import_warnings[] = "取込後検証: pid={$row['pid']} の re_patient.original_pid={$row['rp_opid']} と re_shinryo.original_pid={$row['rs_opid']} が不一致です（step2 JOIN は re_shinryo.original_pid を使用）";
+            }
+        }
     }
 }
 
 ?>
 
 </table>
+
+<?php if (!empty($import_warnings)) { ?>
+<div align="center" class="tbl" style="margin-top:1em;color:#c00;">
+<strong>取込警告（要確認）</strong>
+<ul style="text-align:left;display:inline-block;">
+<?php foreach ($import_warnings as $warning) { ?>
+<li><?php echo htmlspecialchars($warning, ENT_QUOTES, 'UTF-8'); ?></li>
+<?php } ?>
+</ul>
+</div>
+<?php } ?>
 
 <br /><br /><br />
 

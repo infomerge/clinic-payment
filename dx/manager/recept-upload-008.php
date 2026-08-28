@@ -114,6 +114,7 @@ $i = 1;
 <?php
 $sid = 0;
 $ko_flag = false;
+$receipt_pid = 0;
 while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
     $array_ss = $array_co = array();
 
@@ -170,6 +171,9 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
     }
     if ($data[0] == "RE") {
         $ko_flag = false;
+        // 患者切替時に前レセプトの pid を捨てる（HO あり→HO なし生活保護で誤紐付するのを防ぐ）
+        $pid = 0;
+        $receipt_pid = 0;
         //名前の文字化け回避して$nameに格納
         $name = mb_convert_encoding("{$data[4]}", "UTF-8", "SJIS");
         //診療年月(GYYMM)を西暦に変換して診療月($srm)に格納
@@ -387,6 +391,8 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
                                             WHERE name = '$name'
                                                 AND birth = '$birth')";
         $dbh->query($sql);
+        $receipt_pid = recept_resolve_pid($dbh, $name, $birth);
+        $pid = $receipt_pid;
 
     }
     if ($data[0] == "KO") {
@@ -435,6 +441,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
         //-------------------------------------
 
         /* 既に登録があるか否かPID検索（名前／生年月日のAND） */
+        $pid = 0;
         $sql = "SELECT pid
                 FROM re_patient
                 WHERE name = '$name'
@@ -444,7 +451,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
             $pid = $row['pid'];
         }
 
-        if ($pid == 0) {
+        if ((int)$pid <= 0) {
             /* 登録が無かった場合は全項目INSERT */
             $sql = "INSERT INTO re_patient (payer,
                                             prefecture,
@@ -475,6 +482,10 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
                             '$futansya',
                             '$jukyusya')";
             $dbh->query($sql);
+            $pid = (int)$dbh->lastInsertId();
+            if ($pid <= 0) {
+                $pid = recept_resolve_pid($dbh, $name, $birth);
+            }
         } else {
             /* 登録があった場合は負担者／受給者コードをUPDATE */
             $sql = "UPDATE re_patient
@@ -483,6 +494,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
                     WHERE pid = '$pid'";
             $dbh->query($sql);
         }
+        $receipt_pid = (int)$pid;
 
     }
 
@@ -572,42 +584,38 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
         //  患者テーブル（patient_info）へ登録
         //----------------------------------
 
-        //患者一覧をSESSIONに格納（被保険者番号等含む）
-        $patient_array = array($rid,$name,$birth,$hihoki,$hihoban,$jukyusya,$original_irkkcode);
-        $_SESSION["patient_".$rid][$pid] = $patient_array;
-
-
         //-----------------------------------------------------
-        //  re_patientにpatient_infoからoriginal_pidを持ってくる
+        //  re_patient に patient_info.original_pid を同期（整合用。step2 の JOIN キーではない）
+        //  請求の真のキーは patient_info.original_pid
+        //  re_shinryo.original_pid → patient_info
+        //  re_shinryo.pid → re_patient（必須。0 だと期間請求から除外）
         //-----------------------------------------------------
 
-        #STEP1# re_patientより対象のpid取得
-        $sql = "SELECT pid
-                FROM re_patient
-                WHERE name = '$name'
-                    AND birth = '$birth'";
-        $stmt = $dbh->query($sql);
-        foreach ($stmt as $row) {
-            $pid = $row['pid'];
+        if ((int)$receipt_pid <= 0) {
+            $receipt_pid = recept_resolve_pid($dbh, $name, $birth);
         }
+        $pid = (int)$receipt_pid;
 
-        #STEP2# patient_infoよりoriginal_pid取得
         $sql = "SELECT original_pid
                 FROM patient_info
                 WHERE patient_name = '$name'
                     AND patient_birth = '$birth' AND disp = 0 ";
         $stmt = $dbh->query($sql);
+        $original_pid = "";
         foreach ($stmt as $row) {
             $original_pid = $row['original_pid'];
         }
 
-        #STEP3# re_patientにoriginal_idを登録
-        $sql = "UPDATE re_patient
-                SET original_pid = '$original_pid'
-                WHERE pid = '$pid'";
-        $dbh->query($sql);
+        if ((int)$pid > 0 && $original_pid !== "") {
+            $sql = "UPDATE re_patient
+                    SET original_pid = '$original_pid'
+                    WHERE pid = '$pid'";
+            $dbh->query($sql);
+        }
 
-
+        $patient_array = array($rid,$name,$birth,$hihoki,$hihoban,$jukyusya,$original_irkkcode);
+        $_SESSION["patient_".$rid][$pid] = $patient_array;
+        $_SESSION["patientlist_".$rid][4] = $pid;
 
     }
     if ($data[0] == "SS") {
@@ -640,7 +648,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
         for ($j = 78 ; $j <= 108; $j++) {
             if ( $data[$j] >= 1 ) {
                 $sid += 1;
-                $original_irkkcode = $original_pid = $pid = "";
+                $original_irkkcode = $original_pid = "";
                 $dt = sprintf('%02d', $j - 77);
                 $srd = $srm . $dt;
                 if ($data[1] != "") {
@@ -715,6 +723,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
                 foreach ($stmt as $row) {
                     $pid = $row['pid'];
                 }
+                $pid = recept_use_pid($pid, $receipt_pid);
 
 
                 //SESSIONに診療行為データを格納
@@ -758,7 +767,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
         for ($j = 7 ; $j <= 37; $j++) {
             if ( $data[$j] >= 1 ) {
                 $sid += 1;
-                $original_irkkcode = $original_pid = $pid = "";
+                $original_irkkcode = $original_pid = "";
                 $dt = sprintf('%02d', $j - 6);
                 $srd = $srm . $dt;
                 if ($data[1] != "") {
@@ -831,6 +840,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
                 foreach ($stmt as $row) {
                     $pid = $row['pid'];
                 }
+                $pid = recept_use_pid($pid, $receipt_pid);
 
 
                 //SESSIONに診療行為データを格納
@@ -874,7 +884,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
         for ($j = 8 ; $j <= 38; $j++) {
             if ( $data[$j] >= 1 ) {
                 $sid += 1;
-                $original_irkkcode = $original_pid = $pid = "";
+                $original_irkkcode = $original_pid = "";
                 $dt = sprintf('%02d', $j - 7);
                 $srd = $srm . $dt;
                 if ($data[1] != "") {
@@ -948,6 +958,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
                 foreach ($stmt as $row) {
                     $pid = $row['pid'];
                 }
+                $pid = recept_use_pid($pid, $receipt_pid);
 
 
                 //SESSIONに診療行為データを格納
@@ -991,7 +1002,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
         for ($j = 14 ; $j <= 44; $j++) {
             if ( $data[$j] >= 1 ) {
                 $sid += 1;
-                $original_irkkcode = $original_pid = $pid = "";
+                $original_irkkcode = $original_pid = "";
                 $dt = sprintf('%02d', $j - 13);
                 $srd = $srm . $dt;
                 if ($data[1] != "") {
@@ -1064,6 +1075,7 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
                 foreach ($stmt as $row) {
                     $pid = $row['pid'];
                 }
+                $pid = recept_use_pid($pid, $receipt_pid);
 
 
                 //SESSIONに診療行為データを格納
@@ -1103,8 +1115,9 @@ while ( ( $data = fgetcsv ( $handle, 200) ) !== FALSE ) {
         foreach ($stmt as $row) {
         $pid = $row['pid'];
         }
+        $pid = recept_use_pid($pid, $receipt_pid);
 
-        if ($pid!=0) {
+        if ((int)$pid > 0) {
             //コメントDBに格納
             $sql = "INSERT INTO re_comment (pid,comment)
                     SELECT '$pid','$name'

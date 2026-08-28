@@ -179,6 +179,11 @@ class CLSYSTEM{
         else:
 
             #医療保険マスター
+            # 期間請求 JOIN キー:
+            #   真の患者キー = patient_info.original_pid
+            #   re_shinryo.original_pid = patient_info.original_pid（必須）
+            #   re_shinryo.pid = re_patient.pid（必須。0 だと除外）
+            #   re_patient.original_pid は整合用で、この JOIN では使わない
             $sql = "SELECT *
                     FROM re_shinryo INNER JOIN re_patient ON re_shinryo.pid = re_patient.pid
                                     INNER JOIN patient_info ON re_shinryo.original_pid = patient_info.original_pid 
@@ -805,6 +810,84 @@ class CLSYSTEM{
         return $m_service;
     }
 
+    function closeManageperiodAfterGenerate(){
+        $targetym = $this->targetym;
+
+        $sql = "SELECT rs.sid, rs.original_pid, rs.pid, rs.srd, rs.original_irkkcode,
+                       CASE
+                           WHEN rs.pid IS NULL OR rs.pid <= 0 THEN 're_shinryo.pid未設定'
+                           WHEN rp.pid IS NULL THEN 're_patient未紐付'
+                           WHEN pi.original_pid IS NULL THEN 'patient_infoなし'
+                           WHEN ai.original_irkkcode IS NULL THEN 'account_infoなし'
+                           ELSE '不明'
+                       END AS gap_reason
+                FROM re_shinryo rs
+                LEFT JOIN re_patient rp ON rs.pid = rp.pid AND rs.pid > 0
+                LEFT JOIN patient_info pi ON rs.original_pid = pi.original_pid
+                LEFT JOIN account_info ai ON rs.original_irkkcode = ai.original_irkkcode
+                WHERE rs.manageperiod_status IN (1, 5)
+                  AND rs.manageperiod_targetym = '{$targetym}'
+                  AND (rs.pid IS NULL OR rs.pid <= 0 OR rp.pid IS NULL OR pi.original_pid IS NULL OR ai.original_irkkcode IS NULL)";
+        $stmt = $this->db->databasequery($sql);
+        $gaps = ($stmt && $stmt !== false) ? $stmt->fetchALL(PDO::FETCH_ASSOC) : array();
+        if (!empty($gaps)) {
+            echo "[期間請求 整合エラー] targetym={$targetym} に JOIN できない re_shinryo が ".count($gaps)." 件あります。status=5 にして翌月 step1 で再処理します。\n";
+            $shown = 0;
+            foreach ($gaps as $g) {
+                echo "sid={$g['sid']}\toriginal_pid={$g['original_pid']}\tpid={$g['pid']}\tsrd={$g['srd']}\t{$g['gap_reason']}\n";
+                $shown++;
+                if ($shown >= 50) {
+                    echo "...(以降省略)\n";
+                    break;
+                }
+            }
+        }
+
+        $sql = "SELECT rp.pid, rp.original_pid AS rp_opid, rs.original_pid AS rs_opid, rs.sid
+                FROM re_shinryo rs
+                INNER JOIN re_patient rp ON rs.pid = rp.pid AND rs.pid > 0
+                WHERE rs.manageperiod_status IN (1, 5)
+                  AND rs.manageperiod_targetym = '{$targetym}'
+                  AND rp.original_pid IS NOT NULL AND rp.original_pid <> '' AND rp.original_pid <> '0'
+                  AND CAST(rp.original_pid AS CHAR) <> CAST(rs.original_pid AS CHAR)";
+        $stmt = $this->db->databasequery($sql);
+        $mismatches = ($stmt && $stmt !== false) ? $stmt->fetchALL(PDO::FETCH_ASSOC) : array();
+        if (!empty($mismatches)) {
+            echo "[期間請求 整合警告] re_patient.original_pid と re_shinryo.original_pid の不一致（step2 JOIN は re_shinryo.original_pid を使用）\n";
+            $shown = 0;
+            foreach ($mismatches as $m) {
+                echo "sid={$m['sid']}\tpid={$m['pid']}\tre_patient.original_pid={$m['rp_opid']}\tre_shinryo.original_pid={$m['rs_opid']}\n";
+                $shown++;
+                if ($shown >= 20) {
+                    echo "...(以降省略)\n";
+                    break;
+                }
+            }
+        }
+
+        $sql = "UPDATE re_shinryo rs
+                INNER JOIN re_patient rp ON rs.pid = rp.pid AND rs.pid > 0
+                INNER JOIN patient_info pi ON rs.original_pid = pi.original_pid
+                INNER JOIN account_info ai ON rs.original_irkkcode = ai.original_irkkcode
+                SET rs.manageperiod_status = 2
+                WHERE rs.manageperiod_status IN (1, 5)
+                  AND rs.manageperiod_targetym = '{$targetym}'";
+        $this->db->databasequery($sql);
+
+        $sql = "UPDATE re_shinryo
+                SET manageperiod_status = 5
+                WHERE manageperiod_status = 1
+                  AND manageperiod_targetym = '{$targetym}'";
+        $this->db->databasequery($sql);
+
+        $sql = "UPDATE manageperiod SET status = 2 where status = 1 and targetym = '{$targetym}';";
+        $this->db->databasequery($sql);
+        $sql = "UPDATE rek_service SET manageperiod_status = 2 where manageperiod_status = 1 and manageperiod_targetym = '{$targetym}';";
+        $this->db->databasequery($sql);
+        $sql = "UPDATE appendix SET manageperiod_status = 2 where manageperiod_status = 1 and manageperiod_targetym = '{$targetym}';";
+        $this->db->databasequery($sql);
+    }
+
     function generateRPdata(){
         # デプロイ確認用: サーバにこのブロックが無い場合は旧 echo のまま（line 付近で ['name'] Warning）
         $data = $this->getPaymentData();
@@ -837,14 +920,7 @@ class CLSYSTEM{
            
         endforeach;
 
-        $sql = "UPDATE manageperiod SET status = 2 where status = 1 and targetym = '{$this->targetym}';";
-        $this->db->databasequery($sql);
-        $sql = "UPDATE re_shinryo SET manageperiod_status = 2 where manageperiod_status = 1 and manageperiod_targetym = '{$this->targetym}';";
-        $this->db->databasequery($sql);
-        $sql = "UPDATE rek_service SET manageperiod_status = 2 where manageperiod_status = 1 and manageperiod_targetym = '{$this->targetym}';";
-        $this->db->databasequery($sql);
-        $sql = "UPDATE appendix SET manageperiod_status = 2 where manageperiod_status = 1 and manageperiod_targetym = '{$this->targetym}';";
-        $this->db->databasequery($sql);
+        $this->closeManageperiodAfterGenerate();
     }
 
     #イレギュラー操作
