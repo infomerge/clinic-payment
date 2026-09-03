@@ -66,6 +66,8 @@ flowchart LR
 
 ジョブ進行は `manageperiod` テーブル、明細側は `re_shinryo` / `rek_service` / `appendix` の `manageperiod_status`。
 
+**ブラウザ運用（2026-08 追加）**: `manager/closing.php`（締めダッシュボード）と `manager/backup.php`（data-only バックアップ／確認コード付きリストア）。メニューからも遷移可能。CLI の `_batch_manageperiod_step*.php` と同等の処理を段階ボタンで実行する。step6 は廃止。
+
 ### 明細の `manageperiod_status`（コードから推定）
 
 | 値 | 意味 |

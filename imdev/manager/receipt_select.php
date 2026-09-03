@@ -7,6 +7,7 @@ include_once "../common/smarty_settings.php";
 include_once '../class/common.php';
 require_once('../class/db_extension.php');
 include_once "../class/config.php";
+include_once "../class/backup_helper.php";
 
 $today = date('Y-m-d h:i:s');
 // セッションチェック
@@ -27,10 +28,10 @@ if($row[0] == 0) {
 	header("Location: /index.php?error=error");
 }
 
-
-
-
-
+$dbh_bk = new PDO('mysql:dbname='.DBNAME.';host=localhost;charset=utf8','xs547384_dx','wwxlkl7m');
+$dbh_bk->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$bk = new BackupHelper($dbh_bk);
+$latest_receipt_bk = $bk->latestByReason(BackupHelper::REASON_BEFORE_RECEIPT);
 
 $smarty->assign( 'data',$result);
 #$smarty->assign( 'm_partner',$m_partner);
@@ -38,6 +39,7 @@ $smarty->assign( 'data',$result);
 $smarty->assign( 'navi_type',14);
 #$smarty->assign( 'master_account_name',$master_account_name);
 $smarty->assign( 'account_name',$login_name);
+$smarty->assign( 'latest_receipt_bk', $latest_receipt_bk);
 #$smarty->assign( 'from',$from);
 #$smarty->assign( 'to',$to);
 

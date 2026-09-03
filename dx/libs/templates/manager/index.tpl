@@ -27,6 +27,8 @@
     <!-- <li><a href="/manager/product_master_list.php" class="navi01_a">レセプトッチェック</a></li>  -->
     <li><a href="/manager/receipt_select.php">レセプトデータ取込</a></li>
     <li><a href="/manager/appendix.php">自由診療／物販／金額調整</a></li>
+    <li><a href="/manager/closing.php">締めダッシュボード</a></li>
+    <li><a href="/manager/backup.php">DBバックアップ</a></li>
     <li><a href="/manager/generate.php">請求書・領収書</a></li>
     <li><a href="/manager/kaisyu.php">回収票出力</a></li>
 	</ul>

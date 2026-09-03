@@ -95,13 +95,15 @@ $smarty->display( 'common/header.tpl' );
         <br /><br />
 
 
-        <h2 class="title_name">【実験中】締めの実施</h2>
-
+        <h2 class="title_name">締めの実施</h2>
+        <p>締め処理は <a href="closing.php"><strong>締めダッシュボード</strong></a> から実行してください（バックアップ・段階実行・ログ付き）。</p>
+        <p><a href="backup.php">DBバックアップ / リストア</a></p>
+        <!-- 旧UI: setperiod のみ。ダッシュボードへ移行済み
         <form name="form1" method="post" action="generate.php">
           <input type="hidden" name="mode" value="setperiod">
-          <!--締める年月を入力（YYYYMM形式）：<input type="text" name="targetym" value="" placeholder="例：202007"><br>-->
             <input type="submit" name="submit" value="締めを実施" />
         </form>
+        -->
         <br><br>
         締めの処理待ち<br>
 <?php
