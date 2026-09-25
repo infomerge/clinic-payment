@@ -37,7 +37,7 @@ if($selected_pid){
 
 $original_pid = isset($_REQUEST['original_pid']) ? $_REQUEST['original_pid'] : "";
 
-$sql = "SELECT patient_name,patient_hihoki,patient_hihoban,patient_jukyuban,patient_kaigo_hihoban,patient_kaigo_jukyuban
+$sql = "SELECT patient_name,patient_hihoki,patient_hihoban,patient_jukyuban,patient_kaigo_hihoban,patient_kaigo_jukyuban,patient_birth
             FROM patient_info
             WHERE original_pid = '$original_pid' AND disp = '0'";
     $stmt = $dbh->query($sql);
@@ -48,6 +48,7 @@ $sql = "SELECT patient_name,patient_hihoki,patient_hihoban,patient_jukyuban,pati
     $patient_jukyuban = $result['patient_jukyuban'];
     $patient_kaigo_hihoban = $result['patient_kaigo_hihoban'];
     $patient_kaigo_jukyuban	= $result['patient_kaigo_jukyuban'];
+    $patient_birth	= $result['patient_birth'];
 ?>
 
 <div id="wrap">
@@ -71,6 +72,7 @@ $sql = "SELECT patient_name,patient_hihoki,patient_hihoban,patient_jukyuban,pati
                 <th>医療保険受給者番号</th>
                 <th>介護保険被保険者番号</th>
                 <th>介護保険受給者番号</th>
+                <th>生年月日</th>
               </tr>";
         echo "<tr>
                 <td>$original_pid</td>
@@ -80,6 +82,7 @@ $sql = "SELECT patient_name,patient_hihoki,patient_hihoban,patient_jukyuban,pati
                 <td>$patient_jukyuban</td>
                 <td>$patient_kaigo_hihoban</td>
                 <td>$patient_kaigo_jukyuban</td>
+                <td>$patient_birth</td>
             　</tr>";
         echo "</table>";
         ?>
@@ -105,7 +108,7 @@ $sql = "SELECT patient_name,patient_hihoki,patient_hihoban,patient_jukyuban,pati
                     FROM patient_info
                     WHERE patient_kaigo_hihoban = '$patient_kaigo_hihoban' AND disp = '0'";
                     */
-                    $sql = "SELECT original_pid as target_pid,patient_name,patient_hihoki,patient_hihoban,patient_jukyuban,patient_kaigo_jukyuban
+                    $sql = "SELECT original_pid as target_pid,patient_name,patient_hihoki,patient_hihoban,patient_jukyuban,patient_kaigo_jukyuban,patient_birth
                     FROM patient_info
                     WHERE patient_kaigo_hihoban = '$patient_kaigo_hihoban'";
                     #echo $sql;
@@ -133,6 +136,7 @@ $sql = "SELECT patient_name,patient_hihoki,patient_hihoban,patient_jukyuban,pati
                         <th>医療保険受給者番号</th>
                         <th>介護保険被保険者番号</th>
                         <th>介護保険受給者番号</th>
+                        <th>生年月日</th>
                         <th></th>
                       <tr>";
 
@@ -145,6 +149,7 @@ $sql = "SELECT patient_name,patient_hihoki,patient_hihoban,patient_jukyuban,pati
                     <td>{$v['patient_jukyuban']}</td>
                     <td>{$patient_kaigo_hihoban}</td>
                     <td>{$v['patient_kaigo_jukyuban']}</td>
+                    <td>{$v['patient_birth']}</td>
                     <td><a href=nayose_iryo_execute.php?original_pid={$original_pid}&target_pid={$v['target_pid']}>名寄せ実行</a></td>
                   </tr>";
                 endforeach;
