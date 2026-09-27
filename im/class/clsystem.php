@@ -135,6 +135,217 @@ class CLSYSTEM{
         }
     }
 
+    # PDO例外を請求書生成まで伝播させない（列・テーブル差で 500 になるのを防ぐ）
+    function safeFetchAssoc($sql){
+        try {
+            $stmt = $this->db->databasequery($sql);
+            if(!$stmt){
+                return array();
+            }
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ? $row : array();
+        } catch (Exception $e) {
+            return array();
+        }
+    }
+
+    # 医院IDのみ採用。介護事業所番号(jigyosya, 8桁以上)は除外
+    function normalizeHospitalIrkkcode($value){
+        $value = trim((string)$value);
+        if($value === '' || $value === '0' || (int)$value <= 0){
+            return '';
+        }
+        if(strlen($value) >= 8){
+            return '';
+        }
+        return $value;
+    }
+
+    # 介護のみ患者：医院マスタ(original_irkkcode)を医療レセプト履歴等から解決
+    # jigyosya（介護事業者番号）は account_info.original_irkkcode とは別物
+    function resolveOriginalIrkkcodeForPatient($original_pid){
+        $original_pid = (int)$original_pid;
+        if($original_pid <= 0){
+            return '';
+        }
+
+        $queries = array(
+            "SELECT MIN(original_irkkcode) AS code
+                FROM re_shinryo
+                WHERE original_pid = '{$original_pid}'
+                  AND original_irkkcode IS NOT NULL
+                  AND original_irkkcode <> ''
+                  AND original_irkkcode <> '0'",
+            "SELECT MIN(irkkcode) AS code
+                FROM re_patient
+                WHERE original_pid = '{$original_pid}'
+                  AND irkkcode IS NOT NULL
+                  AND irkkcode <> ''
+                  AND irkkcode <> '0'",
+            "SELECT MIN(original_irkkcode) AS code
+                FROM re_patient
+                WHERE original_pid = '{$original_pid}'
+                  AND original_irkkcode IS NOT NULL
+                  AND original_irkkcode <> ''
+                  AND original_irkkcode <> '0'",
+            "SELECT MIN(original_irkkcode) AS code
+                FROM accountpatient_relation
+                WHERE original_pid = '{$original_pid}'
+                  AND original_irkkcode IS NOT NULL
+                  AND original_irkkcode <> ''
+                  AND original_irkkcode <> '0'",
+        );
+        foreach($queries as $sql){
+            $row = $this->safeFetchAssoc($sql);
+            if(isset($row['code'])){
+                $code = $this->normalizeHospitalIrkkcode($row['code']);
+                if($code !== ''){
+                    return $code;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    function fetchAccountInfoByOriginalIrkkcode($original_irkkcode){
+        $original_irkkcode = $this->normalizeHospitalIrkkcode($original_irkkcode);
+        if($original_irkkcode === ''){
+            return array();
+        }
+        $sql = "SELECT * FROM account_info WHERE original_irkkcode = '{$original_irkkcode}' LIMIT 1";
+        return $this->safeFetchAssoc($sql);
+    }
+
+    function mergeAccountInfoIntoPatientData(&$dataRow, $account_info){
+        if(!is_array($dataRow) || !is_array($account_info) || count($account_info) === 0){
+            return;
+        }
+        $clinic_keys = array(
+            'original_irkkcode', 'irkkname', 'irkk_postal_code', 'irkk_prefecture',
+            'irkk_address1', 'irkk_address2', 'tel',
+            'irkk_bank_name', 'irkk_bank_branch', 'irkk_bank_clasification', 'irkk_bank_no',
+        );
+        foreach($clinic_keys as $key){
+            if(isset($account_info[$key]) && trim((string)$account_info[$key]) !== ''){
+                $dataRow[$key] = $account_info[$key];
+            }
+        }
+    }
+
+    function fetchKaigoOnlyPatientInfoRow($original_pid){
+        $original_pid = (int)$original_pid;
+        if($original_pid <= 0){
+            return array();
+        }
+        $sql = "SELECT patient_info.*, rek_patient.jigyosya
+                FROM patient_info
+                LEFT JOIN rek_patient ON patient_info.original_pid = rek_patient.original_pid
+                WHERE patient_info.original_pid = '{$original_pid}' AND patient_info.disp = 0";
+        if($this->format == "seikyu"){
+            $sql .= " AND patient_info.invoice_output = 0 ";
+        }else if($this->format == "ryosyu"){
+            $sql .= " AND patient_info.receipt_output = 0 ";
+        }
+        return $this->safeFetchAssoc($sql);
+    }
+
+    function resolveMedicalIrkkcodeForPatient($original_pid){
+        $original_pid = (int)$original_pid;
+        if($original_pid <= 0){
+            return '';
+        }
+        $sql = "SELECT MIN(irkkcode) AS irkkcode
+                FROM re_patient
+                WHERE original_pid = '{$original_pid}'
+                  AND irkkcode IS NOT NULL
+                  AND irkkcode <> ''";
+        $row = $this->safeFetchAssoc($sql);
+        if(isset($row['irkkcode'])){
+            return $this->normalizeHospitalIrkkcode($row['irkkcode']);
+        }
+        return '';
+    }
+
+    function enrichKaigoOnlyPatientClinicData($original_pid, &$dataRow){
+        if(!is_array($dataRow)){
+            return;
+        }
+
+        $original_irkkcode = '';
+        if(isset($dataRow['original_irkkcode'])){
+            $original_irkkcode = $this->normalizeHospitalIrkkcode($dataRow['original_irkkcode']);
+        }
+        if($original_irkkcode === ''){
+            $original_irkkcode = $this->resolveOriginalIrkkcodeForPatient($original_pid);
+        }
+
+        if($original_irkkcode !== ''){
+            $account_info = $this->fetchAccountInfoByOriginalIrkkcode($original_irkkcode);
+            $this->mergeAccountInfoIntoPatientData($dataRow, $account_info);
+            $dataRow['original_irkkcode'] = $original_irkkcode;
+        }
+
+        # 介護事業所番号(jigyosya)が irkkcode に入っている場合は医院IDで上書き
+        $current_irkkcode = isset($dataRow['irkkcode']) ? trim((string)$dataRow['irkkcode']) : '';
+        $looks_like_jigyosya = ($current_irkkcode !== '' && strlen($current_irkkcode) >= 8);
+        if($current_irkkcode === '' || $looks_like_jigyosya){
+            $medical_irkkcode = $this->resolveMedicalIrkkcodeForPatient($original_pid);
+            if($medical_irkkcode !== ''){
+                $dataRow['irkkcode'] = $medical_irkkcode;
+            }elseif($original_irkkcode !== ''){
+                $dataRow['irkkcode'] = $original_irkkcode;
+            }
+        }
+
+        if((!isset($dataRow['irkk_tel']) || trim((string)$dataRow['irkk_tel']) === '') && isset($dataRow['tel']) && trim((string)$dataRow['tel']) !== ''){
+            $dataRow['irkk_tel'] = $dataRow['tel'];
+        }
+        if(!array_key_exists('irkkcode', $dataRow)){
+            $dataRow['irkkcode'] = '';
+        }
+    }
+
+    function initializeKaigoOnlyPatientDataRow($original_pid, &$data, $kaigo_data, $patient_info_map, $account_info_map){
+        if(!isset($data[$original_pid])){
+            $data[$original_pid] = array();
+        }
+        if(isset($data[$original_pid]['data']) && is_array($data[$original_pid]['data'])){
+            return;
+        }
+        $row = array();
+        if(isset($patient_info_map[$original_pid]) && is_array($patient_info_map[$original_pid])){
+            $row = $patient_info_map[$original_pid];
+        }else{
+            $row = $this->fetchKaigoOnlyPatientInfoRow($original_pid);
+        }
+        if(!is_array($row) || count($row) === 0){
+            return;
+        }
+        if(isset($account_info_map[$original_pid])){
+            $this->mergeAccountInfoIntoPatientData($row, $account_info_map[$original_pid]);
+        }
+        $data[$original_pid]['data'] = $row;
+        $this->enrichKaigoOnlyPatientClinicData($original_pid, $data[$original_pid]['data']);
+        $this->syncDataNameFromPatientName($data[$original_pid]['data']);
+    }
+
+    function enrichKaigoOnlyClinicOnPaymentData(&$data){
+        if(!is_array($data)){
+            return;
+        }
+        foreach($data as $original_pid => $patient_data){
+            $has_iryo = isset($patient_data['srd']) && is_array($patient_data['srd']) && count($patient_data['srd']) > 0;
+            if($has_iryo){
+                continue;
+            }
+            if(!isset($data[$original_pid]['data']) || !is_array($data[$original_pid]['data'])){
+                continue;
+            }
+            $this->enrichKaigoOnlyPatientClinicData($original_pid, $data[$original_pid]['data']);
+        }
+    }
+
     function getPaymentData(){
         
 
@@ -189,6 +400,7 @@ class CLSYSTEM{
             endif;
 
             $this->enrichPaymentDataPatientNames($acc_detail_data);
+            $this->enrichKaigoOnlyClinicOnPaymentData($acc_detail_data);
             $this->dropPaymentDataWithoutRegisteredPatientName($acc_detail_data);
 
             return $acc_detail_data;
@@ -392,7 +604,7 @@ class CLSYSTEM{
 
             ##########
             #
-            # 医療保険がない患者のためにpatient_infoとaccount_infoを取得
+            # 介護保険のみの患者も出力対象に含める（医院は original_irkkcode で解決。jigyosya は使わない）
             #
             ##########
             $patient_info_map = array();
@@ -405,29 +617,14 @@ class CLSYSTEM{
                         break;
                     }
                 }
-                # 医療保険がない患者の場合、patient_infoとaccount_infoを取得
-                if(!$found_in_iryo){
-                    # patient_infoを取得
-                    $sql = "SELECT patient_info.*, rek_patient.jigyosya 
-                            FROM patient_info 
-                            INNER JOIN rek_patient ON patient_info.original_pid = rek_patient.original_pid 
-                            WHERE patient_info.original_pid = '{$original_pid}' AND patient_info.disp = 0";
-                    if($this->format == "seikyu"){
-                        $sql .= " AND patient_info.invoice_output = 0 ";
-                    }else if($this->format == "ryosyu"){
-                        $sql .= " AND patient_info.receipt_output = 0 ";
-                    }
-                    $stmt = $this->db->databasequery($sql);
-                    $patient_info_result = $stmt->fetch(PDO::FETCH_ASSOC);
+                if(!$found_in_iryo && isset($kaigo_trans[$original_pid])){
+                    $patient_info_result = $this->fetchKaigoOnlyPatientInfoRow($original_pid);
                     if($patient_info_result){
                         $patient_info_map[$original_pid] = $patient_info_result;
-                        # account_infoを取得（jigyosyaをoriginal_irkkcodeとして使用）
-                        if(isset($patient_info_result['jigyosya']) && $patient_info_result['jigyosya']){
-                            $jigyosya = $patient_info_result['jigyosya'];
-                            $sql = "SELECT * FROM account_info WHERE original_irkkcode = '{$jigyosya}'";
-                            $stmt = $this->db->databasequery($sql);
-                            $account_info_result = $stmt->fetch(PDO::FETCH_ASSOC);
-                            if($account_info_result){
+                        $original_irkkcode = $this->resolveOriginalIrkkcodeForPatient($original_pid);
+                        if($original_irkkcode !== ''){
+                            $account_info_result = $this->fetchAccountInfoByOriginalIrkkcode($original_irkkcode);
+                            if(count($account_info_result) > 0){
                                 $account_info_map[$original_pid] = $account_info_result;
                             }
                         }
@@ -553,24 +750,7 @@ class CLSYSTEM{
             ##########
             foreach($all_original_pids as $original_pid){
                 if(!isset($data[$original_pid])){
-                    $data[$original_pid] = array();
-                    # patient_infoとaccount_infoが取得できている場合、$data[$original_pid]['data']に格納
-                    if(isset($patient_info_map[$original_pid])){
-                        $data[$original_pid]['data'] = $patient_info_map[$original_pid];
-                        if(isset($account_info_map[$original_pid])){
-                            # account_infoのデータもマージ
-                            $data[$original_pid]['data'] = array_merge($data[$original_pid]['data'], $account_info_map[$original_pid]);
-                        }
-                        # rek_patientの情報も必要に応じて追加（介護保険データから取得）
-                        foreach($kaigo_data as $kaigo_v){
-                            if($kaigo_v['original_pid'] == $original_pid){
-                                if(isset($kaigo_v['jigyosya'])){
-                                    $data[$original_pid]['data']['irkkcode'] = $kaigo_v['jigyosya'];
-                                }
-                                break;
-                            }
-                        }
-                    }
+                    $this->initializeKaigoOnlyPatientDataRow($original_pid, $data, $kaigo_data, $patient_info_map, $account_info_map);
                 }
             }
 
@@ -626,14 +806,13 @@ class CLSYSTEM{
             foreach($data as $original_pid => $v) {
 
                 #医療保険：1の位を四捨五入
-                if(isset($v['srd'])){
+                # 介護のみの場合は空の srd を作らない（未定義 $srm で壊れた明細になり PDF が 500 になる）
+                if(isset($v['srd']) && is_array($v['srd'])){
                     foreach($v['srd'] as $srm => $v2){
                     foreach($v2 as $kk => $vv){
                         $data[$original_pid]['srd'][$srm][$kk]['copayment'] = round($vv['copayment'],-1);
                     }
                     }
-                }else{
-                    $data[$original_pid]['srd'][$srm] = array();
                 }
 
                 if(isset($kaigo_trans[$original_pid]['srm'])){
@@ -702,10 +881,11 @@ class CLSYSTEM{
 
                 #請求番号
                 $tmp_rand = uniqid();
-                $inv_id = $patient_data['data']['irkkcode'] . "-" . sprintf('%07d', strval($original_pid)) . "-" . $this->targetym ."-".$tmp_rand;
+                $inv_id = (isset($patient_data['data']['irkkcode']) ? $patient_data['data']['irkkcode'] : '') . "-" . sprintf('%07d', strval($original_pid)) . "-" . $this->targetym ."-".$tmp_rand;
 
                 ### ---------- 点数表 ---------- ###
                 #カテゴリーごとの合計点数を$m_category[$k]['tensu']に格納／医療保険の合計金額を$total_copaymentに加算
+                if(isset($patient_data['srd']) && is_array($patient_data['srd'])){
                 foreach($patient_data['srd'] as $iryo_srm => $v2){
 
                     $tmp_copayment = 0;
@@ -724,11 +904,12 @@ class CLSYSTEM{
                         $total_copayment += $tmp_copayment;
                     }
                 }
+                }
 
                 
 
                 #介護保険の合計点数を$total_service_unitに格納／介護保険の合計金額を$total_copaymentに加算
-                if(isset($patient_data['srm'])){
+                if(isset($patient_data['srm']['copayment'])){
                     #echo $original_pid."は介護保険あり\n";
                     #foreach($patient_data['srm'] as $k => $v){
                         #$total_service_unit += $v['tensu'];
@@ -774,6 +955,7 @@ class CLSYSTEM{
             #print_r($data[392]);exit;
 
             $this->enrichPaymentDataPatientNames($data);
+            $this->enrichKaigoOnlyClinicOnPaymentData($data);
             $this->dropPaymentDataWithoutRegisteredPatientName($data);
 
             return $data;
@@ -1410,7 +1592,20 @@ class CLSYSTEM{
             
             #医療保険明細：請求書1ページ目（表紙〜介護明細まで）には載せない。1ページに余白があっても必ず改ページ後から開始し、
             #医療明細の改ページ行数は newpage_offset2 のみ（全ページ一定）
-            $has_iryo_meisai = isset($patient_data['srd']) && is_array($patient_data['srd']) && count($patient_data['srd']) > 0;
+            $has_iryo_meisai = false;
+            if(isset($patient_data['srd']) && is_array($patient_data['srd'])){
+                foreach($patient_data['srd'] as $month_days){
+                    if(!is_array($month_days)){
+                        continue;
+                    }
+                    foreach($month_days as $day_row){
+                        if(is_array($day_row) && isset($day_row['sid']) && is_array($day_row['sid']) && count($day_row['sid']) > 0){
+                            $has_iryo_meisai = true;
+                            break 2;
+                        }
+                    }
+                }
+            }
             $iryo_block_head = "<div id=\"iryo-meisai-table\"><table class='disp_table'><tr><th colspan=5 class='border_rb'>医療保険</th></tr><tr>
                     <th class=\"category-col border_b\">部</th>
                     <th class=\"border_b\">項目</th>
@@ -1426,11 +1621,17 @@ class CLSYSTEM{
     #診療月でソート月を跨ぐ対策
     ksort($patient_data['srd']);
     foreach($patient_data['srd'] as $kk => $vv){
+        if(!is_array($vv)){
+            continue;
+        }
         
         #診療日順にソート
         ksort($vv);
         #print_r($vv);
         foreach($vv as $k => $v){
+            if(!is_array($v) || !isset($v['sid']) || !is_array($v['sid'])){
+                continue;
+            }
             #print_r($v);
 
             $check_offset = $newpage_offset2;
