@@ -9,6 +9,7 @@ include_once "../class/config.php";
 
 $path2mpdf = dirname(__DIR__).'/mpdf-development'.'/vendor/autoload.php';
 require_once $path2mpdf;
+require_once dirname(__DIR__).'/class/appendix_item_format.php';
 
 $mpdf = new \Mpdf\Mpdf([
     'mode' => 'ja+aCJK',
@@ -282,7 +283,7 @@ foreach($iryo_data as $v){
       #カテゴリーごとの合計金額
       if(isset($data[$v['original_pid']]['app_cat'][$v['app_cat']])){
           $data[$v['original_pid']]['app_cat'][$v['app_cat']] += intval($v['app_price']);
-          $data[$v['original_pid']]['app_item'][$v['app_cat']] .= "/".$v['app_item'];
+          $data[$v['original_pid']]['app_item'][$v['app_cat']] .= "\n".$v['app_item'];
       }else{
           $data[$v['original_pid']]['app_cat'][$v['app_cat']] = intval($v['app_price']);
           $data[$v['original_pid']]['app_item'][$v['app_cat']] = $v['app_item'];
@@ -306,7 +307,7 @@ foreach($data as $original_pid => $dt) {
       #カテゴリーごとの合計金額
       if(isset($data[$original_pid]['app_cat'][$v['app_cat']])){
           $data[$original_pid]['app_cat'][$v['app_cat']] += intval($v['app_price']);
-          $data[$original_pid]['app_item'][$v['app_cat']] .= "/".$v['app_item'];
+          $data[$original_pid]['app_item'][$v['app_cat']] .= "\n".$v['app_item'];
       }else{
           $data[$original_pid]['app_cat'][$v['app_cat']] = intval($v['app_price']);
           $data[$original_pid]['app_item'][$v['app_cat']] = $v['app_item'];
@@ -570,15 +571,12 @@ foreach ($data as $original_pid => $patient_data) {
             <td class='border_r'>".number_format($patient_data['app_cat']['2'])."円</td>
             <td class='border_r'>".number_format($patient_data['app_cat']['3'])."円</td></tr>";
 */
-    if(isset($patient_data['app_item']['1']) && $patient_data['app_item']['1'] != "") $app_item1 = $patient_data['app_item']['1']; else $app_item1 = "<br>";
-    if(isset($patient_data['app_item']['2']) && $patient_data['app_item']['2'] != "") $app_item2 = $patient_data['app_item']['2']; else $app_item2 = "<br>";
-    if(isset($patient_data['app_item']['3']) && $patient_data['app_item']['3'] != "") $app_item3 = $patient_data['app_item']['3']; else $app_item3 = "<br>";
-    /*$html .= "<tr><td class=\"uchiwake border_rb\">".$patient_data['app_item']['1']."\n</td>
-            <td class=\"uchiwake border_rb\">".$patient_data['app_item']['2']."\n</td>
-            <td class='border_rb'>".$patient_data['app_item']['3']."\n</td></tr>";*/
+    $app_item1 = format_appendix_item_html(isset($patient_data['app_item']['1']) ? $patient_data['app_item']['1'] : '', '<br>');
+    $app_item2 = format_appendix_item_html(isset($patient_data['app_item']['2']) ? $patient_data['app_item']['2'] : '', '<br>');
+    $app_item3 = format_appendix_item_html(isset($patient_data['app_item']['3']) ? $patient_data['app_item']['3'] : '', '<br>');
     $html .= "<tr><td class=\"uchiwake border_rb\">".$app_item1."\n</td>
             <td class=\"uchiwake border_rb\">".$app_item2."\n</td>
-            <td class='border_rb'>".$app_item3."\n</td></tr>";
+            <td class=\"uchiwake border_rb\">".$app_item3."\n</td></tr>";
     $html .= "</table></div>";
 
     #未収金／過剰金
@@ -966,6 +964,8 @@ foreach ($data as $original_pid => $patient_data) {
             }
             .uchiwake{
               text-align:center;
+              font-size:12px;
+              hyphens:none;
             }
 
             #shinryo-meisai{

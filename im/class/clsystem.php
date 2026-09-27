@@ -8,6 +8,7 @@ require_once '../class/config.php';
 require_once '../class/commonconst.php';
 #require_once '../pdf/mpdf/mpdf.php';
 require_once __DIR__.'/../vendor/autoload.php';
+require_once __DIR__.'/appendix_item_format.php';
 
 class CLSYSTEM{
     var $db;
@@ -590,7 +591,7 @@ class CLSYSTEM{
                     #カテゴリーごとの合計金額
                     if(isset($data[$original_pid]['app_cat'][$v['app_cat']])){
                         $data[$original_pid]['app_cat'][$v['app_cat']] += intval($v['app_price']);
-                        $data[$original_pid]['app_item'][$v['app_cat']] .= "/".$v['app_item'];
+                        $data[$original_pid]['app_item'][$v['app_cat']] .= "\n".$v['app_item'];
                     }else{
                         $data[$original_pid]['app_cat'][$v['app_cat']] = intval($v['app_price']);
                         $data[$original_pid]['app_item'][$v['app_cat']] = $v['app_item'];
@@ -1067,6 +1068,7 @@ class CLSYSTEM{
             'default_font' => 'ipamjm',
         ]);
         $mpdf->defaultfooterline = 0;
+        $mpdf->hyphenate = false;
         $mpdf->SetFooter('|{PAGENO}|');
         /*$mpdf->fontdata = [
             "trebuchetms" => [
@@ -1286,15 +1288,13 @@ class CLSYSTEM{
                     <td class='border_r'>".number_format($patient_data['app_cat']['2'])."円</td>
                     <td class='border_r'>".number_format($patient_data['app_cat']['3'])."円</td></tr>";
 
-            if(isset($patient_data['app_item']['1']) && $patient_data['app_item']['1'] != "") $app_item1 = $patient_data['app_item']['1']; else $app_item1 = "<br>";
-            if(isset($patient_data['app_item']['2']) && $patient_data['app_item']['2'] != "") $app_item2 = $patient_data['app_item']['2']; else $app_item2 = "<br>";
-            if(isset($patient_data['app_item']['3']) && $patient_data['app_item']['3'] != "") $app_item3 = str_replace(")","）",str_replace("(","（",$patient_data['app_item']['3'])); else $app_item3 = "<br>";
-            /*$html .= "<tr><td class=\"uchiwake border_rb\">".$patient_data['app_item']['1']."\n</td>
-                    <td class=\"uchiwake border_rb\">".$patient_data['app_item']['2']."\n</td>
-                    <td class='border_rb'>".$patient_data['app_item']['3']."\n</td></tr>";*/
+            $app_item1 = format_appendix_item_html(isset($patient_data['app_item']['1']) ? $patient_data['app_item']['1'] : '', '<br>');
+            $app_item2 = format_appendix_item_html(isset($patient_data['app_item']['2']) ? $patient_data['app_item']['2'] : '', '<br>');
+            $app_item3_raw = isset($patient_data['app_item']['3']) ? str_replace(")","）",str_replace("(","（",$patient_data['app_item']['3'])) : '';
+            $app_item3 = format_appendix_item_html($app_item3_raw, '<br>');
             $html .= "<tr><td class=\"uchiwake border_rb\">".$app_item1."\n</td>
                     <td class=\"uchiwake border_rb\">".$app_item2."\n</td>
-                    <td class='border_rb' style='font-size:14px;'>".$app_item3."\n</td></tr>";
+                    <td class=\"uchiwake border_rb\" style='font-size:14px;'>".$app_item3."\n</td></tr>";
             $html .= "</table></div>";
 
             #未収金／過剰金
@@ -1728,6 +1728,8 @@ width:3.8em;
 }
 .uchiwake{
 text-align:center;
+font-size:12px;
+hyphens:none;
 }
 
 #shinryo-meisai{
