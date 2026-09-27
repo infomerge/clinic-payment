@@ -9,7 +9,9 @@ include_once "../class/config.php";
 
 $path2mpdf = dirname(__DIR__).'/mpdf-development'.'/vendor/autoload.php';
 require_once $path2mpdf;
-require_once dirname(__DIR__).'/class/appendix_item_format.php';
+if (is_file(dirname(__DIR__).'/class/appendix_item_format.php')) {
+    require_once dirname(__DIR__).'/class/appendix_item_format.php';
+}
 
 $mpdf = new \Mpdf\Mpdf([
     'mode' => 'ja+aCJK',
@@ -965,7 +967,6 @@ foreach ($data as $original_pid => $patient_data) {
             .uchiwake{
               text-align:center;
               font-size:12px;
-              hyphens:none;
             }
 
             #shinryo-meisai{

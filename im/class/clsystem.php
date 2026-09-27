@@ -8,7 +8,23 @@ require_once '../class/config.php';
 require_once '../class/commonconst.php';
 #require_once '../pdf/mpdf/mpdf.php';
 require_once __DIR__.'/../vendor/autoload.php';
-require_once __DIR__.'/appendix_item_format.php';
+if (is_file(__DIR__.'/appendix_item_format.php')) {
+    require_once __DIR__.'/appendix_item_format.php';
+}
+if (!function_exists('format_appendix_item_html')) {
+    function format_appendix_item_html($text, $emptyHtml = '<br>') {
+        $text = isset($text) ? (string)$text : '';
+        if (function_exists('mb_convert_kana')) {
+            $text = mb_convert_kana($text, 'KV', 'UTF-8');
+        }
+        $text = str_replace(array("\r\n", "\r", '/'), "\n", $text);
+        $text = trim($text);
+        if ($text === '') {
+            return $emptyHtml;
+        }
+        return nl2br(htmlspecialchars($text, ENT_QUOTES, 'UTF-8'), false);
+    }
+}
 
 class CLSYSTEM{
     var $db;
@@ -1068,7 +1084,6 @@ class CLSYSTEM{
             'default_font' => 'ipamjm',
         ]);
         $mpdf->defaultfooterline = 0;
-        $mpdf->hyphenate = false;
         $mpdf->SetFooter('|{PAGENO}|');
         /*$mpdf->fontdata = [
             "trebuchetms" => [
@@ -1729,7 +1744,6 @@ width:3.8em;
 .uchiwake{
 text-align:center;
 font-size:12px;
-hyphens:none;
 }
 
 #shinryo-meisai{

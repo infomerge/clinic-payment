@@ -6,7 +6,9 @@ set_time_limit(0);
 include_once "../class/config.php";
 $path2mpdf = dirname(__DIR__).'/mpdf-development'.'/vendor/autoload.php';
 require_once $path2mpdf;
-require_once __DIR__.'/appendix_item_format.php';
+if (is_file(__DIR__.'/appendix_item_format.php')) {
+    require_once __DIR__.'/appendix_item_format.php';
+}
 
 class GENERATEPDF{
   var $type;
@@ -908,7 +910,6 @@ if($total_copayment == 0) continue;
                 .uchiwake{
                   text-align:center;
                   font-size:12px;
-                  hyphens:none;
                 }
 
                 #shinryo-meisai{
