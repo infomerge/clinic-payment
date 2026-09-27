@@ -73,6 +73,38 @@ class ClosingHelper
     }
 
     /**
+     * 指定年月のロボペイ送信対象件数。
+     * $unsentOnly=true: reqid 未設定 / false: 送信済み（reqid あり）
+     */
+    private function countSendableAccResult($targetym, $unsentOnly)
+    {
+        $sql = "SELECT COUNT(*) AS c FROM acc_result AS a
+                INNER JOIN patient_info AS b ON a.original_pid = b.original_pid
+                WHERE a.targetym = ?
+                  AND b.rp_cid IS NOT NULL AND b.rp_cid != ''
+                  AND b.direct_debit = 0 AND a.rp_disableflag = 0";
+        $sql .= $unsentOnly ? " AND a.reqid IS NULL" : " AND a.reqid IS NOT NULL";
+        $stmt = $this->dbh->prepare($sql);
+        $stmt->execute(array($targetym));
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? (int)$row['c'] : 0;
+    }
+
+    private function listSendableUnsent($targetym)
+    {
+        $sql = "SELECT a.rid, a.original_pid, a.am, a.cod, a.targetym, a.reqid, b.patient_name, b.rp_cid
+                FROM acc_result AS a
+                INNER JOIN patient_info AS b ON a.original_pid = b.original_pid
+                WHERE a.targetym = ?
+                  AND a.reqid IS NULL
+                  AND b.rp_cid IS NOT NULL AND b.rp_cid != ''
+                  AND b.direct_debit = 0 AND a.rp_disableflag = 0";
+        $stmt = $this->dbh->prepare($sql);
+        $stmt->execute(array($targetym));
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
      * Which action buttons should be enabled.
      */
     public function getEnabledActions()
@@ -96,23 +128,16 @@ class ClosingHelper
         $s1 = $this->getByStatus(1);
         $s9 = $this->getByStatus(9);
 
-        $pendingSend = 0;
-        if (count($s2) >= 1) {
-            $stmt = $this->dbh->query(
-                "SELECT COUNT(*) AS c FROM acc_result AS a
-                 INNER JOIN patient_info AS b ON a.original_pid = b.original_pid
-                 WHERE a.reqid IS NULL AND b.rp_cid IS NOT NULL AND b.direct_debit = 0 AND a.rp_disableflag = 0"
-            );
-            $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            $pendingSend = (int)$row['c'];
-        }
-
+        // status=2 の当月だけを見る。過去月の未送信残骸で A1 を止めない。
+        // B2 直後（当月未送信あり・送信済み0）→ B3。それ以外の status=2 → A1（前月クローズ）。
         if (count($s2) === 1) {
-            if ($pendingSend > 0) {
+            $targetym = $s2[0]['targetym'];
+            $pendingSend = $this->countSendableAccResult($targetym, true);
+            $alreadySent = $this->countSendableAccResult($targetym, false);
+            if ($pendingSend > 0 && $alreadySent === 0) {
                 $enabled['b3_preview'] = true;
                 $enabled['b3_send'] = true;
             } else {
-                // 送信済み → 結果待ちへ（step4）
                 $enabled['a1_step4'] = true;
             }
         }
@@ -263,24 +288,26 @@ class ClosingHelper
 
     public function previewStep3()
     {
+        $rows = $this->getByStatus(2);
+        if (count($rows) !== 1) {
+            return array('ok' => false, 'error' => 'status=2 の manageperiod が1件必要です');
+        }
+        $targetym = $rows[0]['targetym'];
+
         $finish_date = date('Y-m-d H:i:s');
         $sql = "SELECT * FROM rp_schedule WHERE deadline_datetime > '{$finish_date}' ORDER BY deadline_datetime ASC LIMIT 1";
         $stmt = $this->dbh->query($sql);
         $transfer = $stmt->fetch(PDO::FETCH_ASSOC);
         $transfer_date = $transfer ? $transfer['transfer_date'] : '';
 
-        $sql = "SELECT a.rid, a.original_pid, a.am, a.cod, a.targetym, b.patient_name, b.rp_cid
-                FROM acc_result AS a
-                INNER JOIN patient_info AS b ON a.original_pid = b.original_pid
-                WHERE a.reqid IS NULL AND b.rp_cid IS NOT NULL AND b.direct_debit = 0 AND a.rp_disableflag = 0";
-        $stmt = $this->dbh->query($sql);
-        $list = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $list = $this->listSendableUnsent($targetym);
         $total = 0;
         foreach ($list as $v) {
             $total += (float)$v['am'];
         }
         return array(
             'ok' => true,
+            'targetym' => $targetym,
             'transfer_date' => $transfer_date,
             'list' => $list,
             'count' => count($list),
@@ -302,11 +329,12 @@ class ClosingHelper
         }
         $transfer_date = $transfer_date_array['transfer_date'];
 
-        $sql = "SELECT * FROM acc_result AS a
-                INNER JOIN patient_info AS b ON a.original_pid = b.original_pid
-                WHERE a.reqid IS NULL AND b.rp_cid IS NOT NULL AND b.direct_debit = 0 AND a.rp_disableflag = 0";
-        $stmt = $this->dbh->query($sql);
-        $acc_result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $this->getByStatus(2);
+        if (count($rows) !== 1) {
+            return array('ok' => false, 'error' => 'status=2 の manageperiod が1件必要です');
+        }
+        $targetym = $rows[0]['targetym'];
+        $acc_result = $this->listSendableUnsent($targetym);
 
         $url = 'https://credit.j-payment.co.jp/gateway/at_gateway.aspx';
         $okCount = 0;
@@ -359,8 +387,7 @@ class ClosingHelper
         }
 
         $detail = implode("\n", $lines);
-        $msg = "送信完了 成功={$okCount} 失敗={$errCount} 振替日={$transfer_date}";
-        $targetym = count($acc_result) ? $acc_result[0]['targetym'] : '';
+        $msg = "送信完了 成功={$okCount} 失敗={$errCount} 振替日={$transfer_date} targetym={$targetym}";
         $this->writeLog('step3', $targetym, $msg, $detail);
         return array('ok' => true, 'message' => $msg, 'detail' => $detail, 'ok_count' => $okCount, 'err_count' => $errCount);
     }

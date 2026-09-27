@@ -78,11 +78,12 @@
 </div>
 
 <div class="cl-box">
-  <h3>Phase A — 前月残処理（ロボペイ結果後）</h3>
-  <p style="font-size:12px;color:#555;">順序: A1 → A2 → A3 → A4。step6 は廃止（UI非表示）。</p>
+  <h3>Phase A — 前月クローズ（繰越）</h3>
+  <p style="font-size:12px;color:#555;">順序: A1 → A2 → A3 → A4。前月の送信済み期間を閉じて繰越する。step6 は廃止（UI非表示）。</p>
   <form method="post" style="display:inline;">
     <input type="hidden" name="action" value="a1_step4" />
-    <input type="submit" class="cl-btn" value="A1 結果待ちへ（step4）" {if !$enabled['a1_step4']}disabled="disabled"{/if} />
+    <input type="submit" class="cl-btn" value="A1 結果待ちへ（step4）" {if !$enabled['a1_step4']}disabled="disabled"{/if}
+      onclick="return confirm('前月を結果待ち（status→3）へ移します。当月のロボペイ送信直後ではなく、翌月末の繰越処理として実行します。よろしいですか？');" />
   </form>
   <form method="post" style="display:inline;">
     <input type="hidden" name="action" value="a2_step5" />
@@ -101,8 +102,8 @@
 </div>
 
 <div class="cl-box">
-  <h3>Phase B — 当月締め</h3>
-  <p style="font-size:12px;color:#555;">順序: バックアップ → B0 → B1 → B2確認→確定 → B3確認→送信。step3 と step4 は分離（送信後に A1 で結果待ちへ）。</p>
+  <h3>Phase B — 当月締め（割当〜ロボペイ送信）</h3>
+  <p style="font-size:12px;color:#555;">順序: バックアップ → B0 → B1 → B2確認→確定 → B3確認→送信。送信後は翌月末まで待つ（次の締めは A1 から）。</p>
   <form method="post" style="display:inline;">
     <input type="hidden" name="action" value="b0_setperiod" />
     <input type="submit" class="cl-btn cl-btn-primary" value="B0 締め開始（setperiod）" {if !$enabled['b0_setperiod']}disabled="disabled"{/if}
@@ -151,7 +152,7 @@
 
 {if $step3_preview && $step3_preview.ok}
 <div class="cl-box">
-  <h3>B3 送信対象 — {$step3_preview.count}件 / 合計 {$step3_preview.total|number_format} 円 ／ 振替日 {$step3_preview.transfer_date|escape}</h3>
+  <h3>B3 送信対象{if $step3_preview.targetym} — {$step3_preview.targetym|escape}{/if} — {$step3_preview.count}件 / 合計 {$step3_preview.total|number_format} 円 ／ 振替日 {$step3_preview.transfer_date|escape}</h3>
   <table class="cl-table">
     <tr><th>rid</th><th>患者ID</th><th>氏名</th><th>金額</th><th>cod</th><th>targetym</th></tr>
     {foreach from=$step3_preview.list item=r}
