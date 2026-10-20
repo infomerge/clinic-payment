@@ -103,7 +103,7 @@ $original_pid = $_GET['original_pid'];
         foreach ($app_list as $v){
             echo "<tr><td><a href='appendix_edit.php?original_pid=".$original_pid."&app_id=".$v['app_id']."'>編集</a></td></td><td>" . $v['app_date'] . "</td>";
             echo "<td>" . $m_cat[$v['app_cat']] . "</td>";
-            echo "<td>" . $v['app_item'] . "</td>";
+            echo "<td>" . nl2br(htmlspecialchars($v['app_item'], ENT_QUOTES, 'UTF-8')) . "</td>";
             echo "<td>" . $v['app_price'] . "円</td></tr>";
         }
 

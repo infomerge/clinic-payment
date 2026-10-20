@@ -112,7 +112,8 @@ if($app_id != ""){
                 <tr>
                 <th>項目</th>
                 <td class="bg_odd">
-                <input type="text" name="app_item" class="frmtxt" style="width:400px;" value="<?php echo $app_item; ?>" />
+                <textarea name="app_item" class="frmtxt" rows="4" style="width:400px;height:80px;"><?php echo htmlspecialchars($app_item, ENT_QUOTES, 'UTF-8'); ?></textarea>
+                <div style="margin-top:6px;font-size:12px;color:#666;">※1行の目安は半角35文字（全角17文字）までです。超えると請求書・領収書上で折り返されます。改行はそのまま表示に反映されます。</div>
                 </td></tr>
 
                 <tr>
